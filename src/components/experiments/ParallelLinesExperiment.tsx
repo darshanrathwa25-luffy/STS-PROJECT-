@@ -153,12 +153,12 @@ export const ParallelLinesExperiment: React.FC = () => {
       icon: <HelpCircle className="w-3.5 h-3.5" />,
       content: (
         <div className="space-y-2 text-xs leading-relaxed">
-          <div className="font-semibold text-[#E8EAF0]">The Parallel Postulate Question:</div>
+          <div className="font-semibold text-[#E8EAF0]">Can you draw a line that never meets this one?</div>
           <p className="text-[#858B9A]">
-            Given a straight geodesic line <span className="text-[#E8EAF0] font-mono font-bold">L</span> and an external point <span className="text-[#69A3FF] font-mono font-bold">P</span> not on <span className="font-mono">L</span>, how many complete geodesics can be drawn through <span className="font-mono text-[#69A3FF]">P</span> that never intersect <span className="font-mono">L</span>?
+            Given reference line <span className="text-[#E8EAF0] font-mono font-bold">L</span> and point <span className="text-[#69A3FF] font-mono font-bold">P</span>, rotate the candidate line to test whether parallel lines exist in this geometry.
           </p>
-          <div className="p-2.5 rounded bg-[#12141A] border border-[#20232B] text-[11px] text-[#858B9A]">
-            For over 2,000 years, mathematicians believed Euclid's Fifth Postulate was self-evident or provable from the first four axioms. In this experiment, you will test whether this assumption holds across different curvatures.
+          <div className="p-2 rounded bg-[#12141A] border border-[#20232B] text-[11px] text-[#858B9A]">
+            Use the slider below or drag in the 3D canvas to rotate through angles.
           </div>
         </div>
       ),

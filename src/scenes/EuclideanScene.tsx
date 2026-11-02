@@ -12,7 +12,7 @@ export const EuclideanScene: React.FC = () => {
   const {
     points,
     appearance,
-    preset,
+    experiment,
     parallelExperiment,
     tool,
     addPoint,
@@ -73,7 +73,7 @@ export const EuclideanScene: React.FC = () => {
 
   // Parallel lines experiment geometry
   const parallelData = useMemo(() => {
-    if (preset !== 'parallel-lines') return null;
+    if (experiment !== 'parallel-lines') return null;
 
     // Reference line L along X-axis at z = 0
     const refCurve = generateEuclideanLine({ x: 0, y: 0 }, { x: 1, y: 0 }, 10, 80, 0.03);
@@ -123,7 +123,16 @@ export const EuclideanScene: React.FC = () => {
       intPt3D,
       fanLines,
     };
-  }, [preset, candidateAngleDeg, showFan]);
+  }, [experiment, candidateAngleDeg, showFan]);
+
+  // Triangle lines in Euclidean space
+  const triangleData = useMemo(() => {
+    if (experiment !== 'triangle' || points.length < 3) return null;
+    const pA = new THREE.Vector3(points[0].position.x, 0.04, points[0].position.z);
+    const pB = new THREE.Vector3(points[1].position.x, 0.04, points[1].position.z);
+    const pC = new THREE.Vector3(points[2].position.x, 0.04, points[2].position.z);
+    return [pA, pB, pC, pA];
+  }, [experiment, points]);
 
   // Click handler on plane
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
@@ -241,6 +250,23 @@ export const EuclideanScene: React.FC = () => {
               <meshBasicMaterial color="#EF476F" />
             </mesh>
           )}
+        </group>
+      )}
+
+      {/* Triangle experiment visualization */}
+      {triangleData && showConstruction && (
+        <group>
+          <line>
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                count={triangleData.length}
+                array={new Float32Array(triangleData.flatMap((v) => [v.x, v.y, v.z]))}
+                itemSize={3}
+              />
+            </bufferGeometry>
+            <lineBasicMaterial color="#69A3FF" linewidth={2} />
+          </line>
         </group>
       )}
 

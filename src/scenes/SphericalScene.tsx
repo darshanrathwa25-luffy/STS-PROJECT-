@@ -16,7 +16,7 @@ export const SphericalScene: React.FC = () => {
   const {
     points,
     appearance,
-    preset,
+    experiment,
     parallelExperiment,
     tool,
     addPoint,
@@ -106,7 +106,7 @@ export const SphericalScene: React.FC = () => {
 
   // Parallel lines experiment on sphere
   const parallelData = useMemo(() => {
-    if (preset !== 'parallel-lines') return null;
+    if (experiment !== 'parallel-lines') return null;
 
     // Reference L: Equator great circle (normal y = 1)
     const nEquator = { x: 0, y: 1, z: 0 };
@@ -178,11 +178,11 @@ export const SphericalScene: React.FC = () => {
       intPts3D,
       fanCircles,
     };
-  }, [preset, candidateAngleDeg, showFan, R]);
+  }, [experiment, candidateAngleDeg, showFan, R]);
 
   // Handle triangle preset geodesic arcs
   const triangleArcs = useMemo(() => {
-    if (preset !== 'triangle' && preset !== 'hero-sphere') return [];
+    if (experiment !== 'triangle') return [];
     if (points.length < 3) return [];
 
     const arcs: THREE.Vector3[][] = [];
@@ -201,7 +201,7 @@ export const SphericalScene: React.FC = () => {
     );
 
     return arcs;
-  }, [preset, points, R]);
+  }, [experiment, points, R]);
 
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
     if (e.button !== 0) return;

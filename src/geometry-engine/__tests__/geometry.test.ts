@@ -15,6 +15,7 @@ import {
   cross3D,
   computeCircleMetrics,
   generatePseudosphereGeometry,
+  generateHyperbolicTessellation,
 } from '../index';
 
 describe('Euclidean Geometry Engine', () => {
@@ -196,5 +197,34 @@ describe('Pseudosphere Mathematical Mesh', () => {
     expect(mesh.indices.length).toBeGreaterThan(0);
     expect(mesh.uGridLines.length).toBe(12);
     expect(mesh.vGridLines.length).toBe(10);
+  });
+});
+
+describe('Hyperbolic Regular Tessellations {p, q}', () => {
+  it('generates valid {7, 3} heptagonal tiling in Poincaré disk', () => {
+    const tiles = generateHyperbolicTessellation(7, 3, 2, 3.5);
+    expect(tiles.length).toBeGreaterThan(1);
+    const centralTile = tiles[0];
+    expect(centralTile.p).toBe(7);
+    expect(centralTile.vertices.length).toBe(7);
+    // All vertices must remain inside unit disk
+    for (const tile of tiles) {
+      for (const v of tile.vertices) {
+        expect(v.x * v.x + v.y * v.y).toBeLessThan(1.0);
+      }
+    }
+  });
+
+  it('generates valid {5, 4} pentagonal tiling with correct vertex count', () => {
+    const tiles = generateHyperbolicTessellation(5, 4, 2, 3.5);
+    expect(tiles.length).toBeGreaterThan(1);
+    expect(tiles[0].vertices.length).toBe(5);
+  });
+
+  it('rejects Euclidean or spherical parameters where (p-2)(q-2) <= 4', () => {
+    // {4, 4} is Euclidean square tiling (4-2)(4-2) = 4 <= 4
+    expect(() => generateHyperbolicTessellation(4, 4)).toThrow();
+    // {3, 3} is spherical tetrahedron (3-2)(3-2) = 1 <= 4
+    expect(() => generateHyperbolicTessellation(3, 3)).toThrow();
   });
 });

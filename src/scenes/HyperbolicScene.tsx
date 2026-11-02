@@ -10,7 +10,7 @@ import {
   intersectHyperbolicGeodesics,
   angleOfParallelism,
   hyperbolicDistance,
-  computeCircleMetrics,
+  generateHyperbolicTessellation,
   degToRad,
   radToDeg,
 } from '../geometry-engine';
@@ -19,9 +19,16 @@ export const HyperbolicScene: React.FC = () => {
   const {
     points,
     appearance,
-    preset,
+    experiment,
     parallelExperiment,
-    circleRadius,
+    tilingP,
+    tilingQ,
+    selectedTileId,
+    hoveredTileId,
+    showTileOutlines,
+    showTileFill,
+    setSelectedTileId,
+    setHoveredTileId,
     tool,
     addPoint,
     selectPoint,
@@ -33,12 +40,20 @@ export const HyperbolicScene: React.FC = () => {
 
   const DISK_RADIUS = 3.5;
 
+  // Generate regular hyperbolic tessellation when in tessellation mode
+  const tiles = useMemo(() => {
+    try {
+      return generateHyperbolicTessellation(tilingP, tilingQ, 3, DISK_RADIUS);
+    } catch {
+      return generateHyperbolicTessellation(7, 3, 3, DISK_RADIUS);
+    }
+  }, [tilingP, tilingQ, DISK_RADIUS]);
+
   // Concentric equal-hyperbolic-distance rings using r = tanh(d / 2)
   const hyperbolicRings = useMemo(() => {
-    // Hyperbolic distances d = 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0
-    const dValues = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0];
+    const dValues = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0];
     const samples = 72;
-    const rings: { d: number; rNorm: number; points: THREE.Vector3[] }[] = [];
+    const rings: { d: number; points: THREE.Vector3[] }[] = [];
 
     for (const d of dValues) {
       const rNorm = Math.tanh(d / 2);
@@ -48,34 +63,19 @@ export const HyperbolicScene: React.FC = () => {
         const theta = (i / samples) * 2 * Math.PI;
         pts.push(new THREE.Vector3(r * Math.cos(theta), 0.005, r * Math.sin(theta)));
       }
-      rings.push({ d, rNorm, points: pts });
+      rings.push({ d, points: pts });
     }
     return rings;
   }, [DISK_RADIUS]);
 
-  // Diameter geodesics through origin (0°, 45°, 90°, 135°)
-  const diameterGeodesics = useMemo(() => {
-    const lines: THREE.Vector3[][] = [];
-    const angles = [0, Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4];
-    for (const a of angles) {
-      lines.push([
-        new THREE.Vector3(-DISK_RADIUS * Math.cos(a), 0.008, -DISK_RADIUS * Math.sin(a)),
-        new THREE.Vector3(DISK_RADIUS * Math.cos(a), 0.008, DISK_RADIUS * Math.sin(a)),
-      ]);
-    }
-    return lines;
-  }, [DISK_RADIUS]);
-
-  // Particle boundary at infinity |z| = 1 & interior particle grid
+  // Particle boundary at infinity |z| = 1
   const particleGeo = useMemo(() => {
-    const boundaryCount = Math.floor(particleCount * 0.45);
-    const interiorCount = particleCount - boundaryCount;
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
+    const count = Math.min(particleCount, 3000);
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
 
-    // Dense rim particles at |z| = 1 (Ideal Boundary at infinity)
-    for (let i = 0; i < boundaryCount; i++) {
-      const theta = (i / boundaryCount) * 2 * Math.PI;
+    for (let i = 0; i < count; i++) {
+      const theta = (i / count) * 2 * Math.PI;
       const r = DISK_RADIUS * (0.995 + Math.random() * 0.01);
       const x = r * Math.cos(theta);
       const z = r * Math.sin(theta);
@@ -84,32 +84,9 @@ export const HyperbolicScene: React.FC = () => {
       positions[i * 3 + 1] = 0;
       positions[i * 3 + 2] = z;
 
-      // Bright silver-white boundary
-      colors[i * 3] = 0.95;
-      colors[i * 3 + 1] = 0.97;
+      colors[i * 3] = 0.92;
+      colors[i * 3 + 1] = 0.95;
       colors[i * 3 + 2] = 1.0;
-    }
-
-    // Interior hyperbolic particles
-    for (let i = 0; i < interiorCount; i++) {
-      const theta = Math.random() * 2 * Math.PI;
-      const u = Math.random();
-      const rNorm = Math.sqrt(u) * 0.97;
-      const r = DISK_RADIUS * rNorm;
-
-      const idx = boundaryCount + i;
-      const x = r * Math.cos(theta);
-      const z = r * Math.sin(theta);
-
-      positions[idx * 3] = x;
-      positions[idx * 3 + 1] = 0;
-      positions[idx * 3 + 2] = z;
-
-      // Subtle falloff
-      const alpha = 0.35 + 0.45 * (1 - rNorm);
-      colors[idx * 3] = 0.8 * alpha;
-      colors[idx * 3 + 1] = 0.85 * alpha;
-      colors[idx * 3 + 2] = 0.95 * alpha;
     }
 
     const geo = new THREE.BufferGeometry();
@@ -121,13 +98,13 @@ export const HyperbolicScene: React.FC = () => {
   const pointsMatRef = useRef<THREE.PointsMaterial>(null);
   useFrame(({ clock }) => {
     if (pointsMatRef.current) {
-      pointsMatRef.current.opacity = 0.6 + Math.sin(clock.getElapsedTime() * 1.5) * 0.05;
+      pointsMatRef.current.opacity = 0.65 + Math.sin(clock.getElapsedTime() * 1.5) * 0.05;
     }
   });
 
-  // Parallel lines flagship experiment in Poincaré disk
+  // Parallel lines experiment data
   const parallelData = useMemo(() => {
-    if (preset !== 'parallel-lines') return null;
+    if (experiment !== 'parallel-lines') return null;
 
     // Reference geodesic L: horizontal diameter along X-axis
     const refDef = computeGeodesicThroughPoints({ x: -0.8, y: 0 }, { x: 0.8, y: 0 });
@@ -138,7 +115,7 @@ export const HyperbolicScene: React.FC = () => {
     const P = { x: 0, y: 0.45 };
     const p3D = new THREE.Vector3(0, 0.035, P.y * DISK_RADIUS);
 
-    // Lobachevsky angle of parallelism for this point
+    // Angle calculations
     const hypDist = hyperbolicDistance({ x: 0, y: 0 }, P);
     const piAngle = angleOfParallelism(hypDist);
     const piAngleDeg = radToDeg(piAngle);
@@ -167,46 +144,16 @@ export const HyperbolicScene: React.FC = () => {
       lineColor = '#EF476F'; // ruby for intersecting
     }
 
-    // Interior intersection point
     let intPt3D: THREE.Vector3 | null = null;
     if (intersection.type === 'unique' && intersection.points[0]) {
       const pt = intersection.points[0] as { x: number; y: number };
       intPt3D = new THREE.Vector3(pt.x * DISK_RADIUS, 0.04, pt.y * DISK_RADIUS);
     }
 
-    // Shared ideal boundary point if limiting
     let idealPt3D: THREE.Vector3 | null = null;
     if (classification === 'limiting' && intersection.points[0]) {
       const pt = intersection.points[0] as { x: number; y: number };
       idealPt3D = new THREE.Vector3(pt.x * DISK_RADIUS, 0.04, pt.y * DISK_RADIUS);
-    }
-
-    // Right-angle orthogonality markers at candidate endpoints on ideal boundary
-    const [e1, e2] = candDef.idealEndpoints;
-    const rightAngleMarkers: THREE.Vector3[][] = [];
-    const size = 0.16;
-    for (const ep of [e1, e2]) {
-      // Ep is on unit circle: ep.x^2 + ep.y^2 = 1.
-      // Unit radial vector toward origin is -ep
-      // Tangent along rim is (-ep.y, ep.x)
-      const rx = -ep.x;
-      const ry = -ep.y;
-      const tx = -ep.y;
-      const ty = ep.x;
-
-      const p0 = new THREE.Vector3(ep.x * DISK_RADIUS, 0.028, ep.y * DISK_RADIUS);
-      const p1 = new THREE.Vector3((ep.x + size * rx) * DISK_RADIUS, 0.028, (ep.y + size * ry) * DISK_RADIUS);
-      const p2 = new THREE.Vector3(
-        (ep.x + size * rx + size * tx * 0.5) * DISK_RADIUS,
-        0.028,
-        (ep.y + size * ry + size * ty * 0.5) * DISK_RADIUS
-      );
-      const p3 = new THREE.Vector3(
-        (ep.x + size * tx * 0.5) * DISK_RADIUS,
-        0.028,
-        (ep.y + size * ty * 0.5) * DISK_RADIUS
-      );
-      rightAngleMarkers.push([p1, p2, p3]);
     }
 
     // Fan curves
@@ -244,28 +191,12 @@ export const HyperbolicScene: React.FC = () => {
       intPt3D,
       idealPt3D,
       fanCurves,
-      rightAngleMarkers,
     };
-  }, [preset, candidateAngleDeg, showFan, DISK_RADIUS]);
-
-  // Circle experiment geodesic circle
-  const circleData = useMemo(() => {
-    if (preset !== 'circle') return null;
-    const rNorm = Math.tanh(circleRadius / 2);
-    const rEuclid = rNorm * DISK_RADIUS;
-    const samples = 72;
-    const circlePoints: THREE.Vector3[] = [];
-    for (let i = 0; i <= samples; i++) {
-      const theta = (i / samples) * 2 * Math.PI;
-      circlePoints.push(new THREE.Vector3(rEuclid * Math.cos(theta), 0.03, rEuclid * Math.sin(theta)));
-    }
-    const metrics = computeCircleMetrics('hyperbolic', circleRadius);
-    return { circlePoints, metrics, rEuclid };
-  }, [preset, circleRadius, DISK_RADIUS]);
+  }, [experiment, candidateAngleDeg, showFan, DISK_RADIUS]);
 
   // Triangle preset geodesic arcs
   const triangleArcs = useMemo(() => {
-    if (preset !== 'triangle') return [];
+    if (experiment !== 'triangle') return [];
     if (points.length < 3) return [];
 
     const arcs: THREE.Vector3[][] = [];
@@ -284,7 +215,7 @@ export const HyperbolicScene: React.FC = () => {
     );
 
     return arcs;
-  }, [preset, points, DISK_RADIUS]);
+  }, [experiment, points, DISK_RADIUS]);
 
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
     if (e.button !== 0) return;
@@ -316,7 +247,13 @@ export const HyperbolicScene: React.FC = () => {
         <meshBasicMaterial />
       </mesh>
 
-      {/* Particle boundary and interior */}
+      {/* Deep Navy/Black Disk Floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]}>
+        <circleGeometry args={[DISK_RADIUS, 64]} />
+        <meshBasicMaterial color="#07090F" />
+      </mesh>
+
+      {/* Particle rim at boundary |z| = 1 */}
       {showSurface && (
         <points geometry={particleGeo}>
           <pointsMaterial
@@ -324,41 +261,99 @@ export const HyperbolicScene: React.FC = () => {
             size={pointSize}
             vertexColors
             transparent
-            opacity={0.65}
+            opacity={0.7}
             sizeAttenuation
             depthWrite={false}
           />
         </points>
       )}
 
-      {/* Ideal Boundary Double Ring Outline (r = 1, d = infinity) */}
+      {/* Crisp Circular Boundary Rim (r = 1, infinity) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
-        <ringGeometry args={[DISK_RADIUS - 0.015, DISK_RADIUS + 0.015, 128]} />
-        <meshBasicMaterial color="#69A3FF" transparent opacity={0.8} />
+        <ringGeometry args={[DISK_RADIUS - 0.02, DISK_RADIUS + 0.02, 128]} />
+        <meshBasicMaterial color="#69A3FF" transparent opacity={0.85} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
-        <ringGeometry args={[DISK_RADIUS + 0.02, DISK_RADIUS + 0.05, 128]} />
+        <ringGeometry args={[DISK_RADIUS + 0.03, DISK_RADIUS + 0.06, 128]} />
         <meshBasicMaterial color="#3A4356" transparent opacity={0.4} />
       </mesh>
 
-      {/* Diameter Geodesics (Straight Euclidean lines through origin) */}
-      {showGrid &&
-        diameterGeodesics.map((pts, idx) => (
-          <line key={`diam-${idx}`}>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={pts.length}
-                array={new Float32Array(pts.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color="#222836" transparent opacity={0.6} />
-          </line>
-        ))}
+      {/* ============================================================== */}
+      {/* EXPERIMENT 03: REGULAR HYPERBOLIC TESSELLATION */}
+      {/* ============================================================== */}
+      {experiment === 'tessellation' && (
+        <group>
+          {tiles.map((tile) => {
+            const isSelected = tile.id === selectedTileId;
+            const isHovered = tile.id === hoveredTileId;
 
-      {/* Equal-Hyperbolic-Distance Concentric Rings: r = tanh(d/2) */}
+            // Tile center in 3D scene
+            const cx = tile.center.x * DISK_RADIUS;
+            const cz = tile.center.y * DISK_RADIUS;
+
+            return (
+              <group key={tile.id}>
+                {/* Tile Center Hit Target / Marker */}
+                <mesh
+                  position={[cx, 0.018, cz]}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedTileId(isSelected ? null : tile.id);
+                  }}
+                  onPointerOver={(e) => {
+                    e.stopPropagation();
+                    setHoveredTileId(tile.id);
+                  }}
+                  onPointerOut={() => {
+                    if (hoveredTileId === tile.id) setHoveredTileId(null);
+                  }}
+                >
+                  <sphereGeometry args={[isSelected ? 0.08 : 0.045, 12, 12]} />
+                  <meshBasicMaterial
+                    color={isSelected ? '#69A3FF' : isHovered ? '#FFD166' : '#2A354C'}
+                  />
+                </mesh>
+
+                {/* Geodesic Edge Outlines */}
+                {showTileOutlines &&
+                  tile.boundarySegments.map((segPts, sIdx) => {
+                    const isCentral = tile.depth === 0;
+                    return (
+                      <line key={`${tile.id}-seg-${sIdx}`}>
+                        <bufferGeometry>
+                          <bufferAttribute
+                            attach="attributes-position"
+                            count={segPts.length}
+                            array={new Float32Array(segPts.flatMap((v) => [v.x, v.y, v.z]))}
+                            itemSize={3}
+                          />
+                        </bufferGeometry>
+                        <lineBasicMaterial
+                          color={
+                            isSelected
+                              ? '#69A3FF'
+                              : isHovered
+                              ? '#FFD166'
+                              : isCentral
+                              ? '#E8EAF0'
+                              : '#425270'
+                          }
+                          linewidth={isSelected || isCentral ? 2 : 1}
+                          transparent
+                          opacity={tile.depth === 0 ? 0.95 : tile.depth === 1 ? 0.8 : 0.6}
+                        />
+                      </line>
+                    );
+                  })}
+              </group>
+            );
+          })}
+        </group>
+      )}
+
+      {/* Concentric equal-hyperbolic-distance rings */}
       {showGrid &&
+        experiment !== 'tessellation' &&
         hyperbolicRings.map((ring, idx) => (
           <line key={`ring-${idx}`}>
             <bufferGeometry>
@@ -373,8 +368,10 @@ export const HyperbolicScene: React.FC = () => {
           </line>
         ))}
 
-      {/* Parallel lines experiment rendering */}
-      {parallelData && showConstruction && (
+      {/* ============================================================== */}
+      {/* EXPERIMENT 01: PARALLEL LINES */}
+      {/* ============================================================== */}
+      {experiment === 'parallel-lines' && parallelData && showConstruction && (
         <group>
           {/* Reference Geodesic L */}
           <line>
@@ -389,7 +386,7 @@ export const HyperbolicScene: React.FC = () => {
             <lineBasicMaterial color="#E0E4EC" linewidth={2} />
           </line>
 
-          {/* Point P */}
+          {/* External Point P */}
           <mesh position={parallelData.p3D}>
             <sphereGeometry args={[0.08, 16, 16]} />
             <meshBasicMaterial color="#69A3FF" />
@@ -423,21 +420,6 @@ export const HyperbolicScene: React.FC = () => {
             <lineBasicMaterial color={parallelData.lineColor} linewidth={2} />
           </line>
 
-          {/* Right-angle 90° orthogonality markers at boundary */}
-          {parallelData.rightAngleMarkers.map((markerPts, idx) => (
-            <line key={`marker-${idx}`}>
-              <bufferGeometry>
-                <bufferAttribute
-                  attach="attributes-position"
-                  count={markerPts.length}
-                  array={new Float32Array(markerPts.flatMap((v) => [v.x, v.y, v.z]))}
-                  itemSize={3}
-                />
-              </bufferGeometry>
-              <lineBasicMaterial color="#FFD166" linewidth={2} />
-            </line>
-          ))}
-
           {/* Interior intersection point */}
           {parallelData.intPt3D && (
             <mesh position={parallelData.intPt3D}>
@@ -456,45 +438,28 @@ export const HyperbolicScene: React.FC = () => {
         </group>
       )}
 
-      {/* Circle experiment rendering */}
-      {circleData && showConstruction && (
+      {/* ============================================================== */}
+      {/* EXPERIMENT 02: TRIANGLE PLAYGROUND */}
+      {/* ============================================================== */}
+      {experiment === 'triangle' && showConstruction && (
         <group>
-          <line>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={circleData.circlePoints.length}
-                array={new Float32Array(circleData.circlePoints.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color="#69A3FF" linewidth={2} />
-          </line>
-          {/* Origin center point */}
-          <mesh position={[0, 0.03, 0]}>
-            <sphereGeometry args={[0.07, 16, 16]} />
-            <meshBasicMaterial color="#FFD166" />
-          </mesh>
+          {triangleArcs.map((arcPts, idx) => (
+            <line key={`tri-arc-${idx}`}>
+              <bufferGeometry>
+                <bufferAttribute
+                  attach="attributes-position"
+                  count={arcPts.length}
+                  array={new Float32Array(arcPts.flatMap((v) => [v.x, v.y, v.z]))}
+                  itemSize={3}
+                />
+              </bufferGeometry>
+              <lineBasicMaterial color="#69A3FF" linewidth={2.5} />
+            </line>
+          ))}
         </group>
       )}
 
-      {/* Triangle arcs */}
-      {showConstruction &&
-        triangleArcs.map((arcPts, idx) => (
-          <line key={idx}>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={arcPts.length}
-                array={new Float32Array(arcPts.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color="#69A3FF" linewidth={2} />
-          </line>
-        ))}
-
-      {/* User placed points */}
+      {/* Draggable / Selectable Points */}
       {points.map((pt) => {
         const isSelected = pt.id === selectedPointId;
         return (
@@ -505,9 +470,15 @@ export const HyperbolicScene: React.FC = () => {
                 selectPoint(pt.id);
               }}
             >
-              <sphereGeometry args={[0.08, 16, 16]} />
+              <sphereGeometry args={[0.09, 16, 16]} />
               <meshBasicMaterial color={isSelected ? '#69A3FF' : '#E0E4EC'} />
             </mesh>
+            {isSelected && (
+              <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[0.16, 0.22, 24]} />
+                <meshBasicMaterial color="#69A3FF" transparent opacity={0.8} />
+              </mesh>
+            )}
           </group>
         );
       })}

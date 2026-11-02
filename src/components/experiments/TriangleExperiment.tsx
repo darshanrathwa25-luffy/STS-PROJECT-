@@ -75,9 +75,9 @@ export const TriangleExperiment: React.FC = () => {
       icon: <HelpCircle className="w-3.5 h-3.5" />,
       content: (
         <div className="space-y-2 text-xs leading-relaxed">
-          <div className="font-semibold text-[#E8EAF0]">Does Every Triangle Total 180°?</div>
+          <div className="font-semibold text-[#E8EAF0]">Can you make a triangle with more than 180 degrees?</div>
           <p className="text-[#858B9A]">
-            In elementary school we learn that the interior angles of any triangle add up to exactly 180° ($\pi$ radians). Is this an absolute law of geometry, or merely a special property of flat Euclidean space?
+            In Euclidean space, triangle angles always sum to 180°. Move the vertices in this geometry to see how space curvature alters the total sum.
           </p>
         </div>
       ),
