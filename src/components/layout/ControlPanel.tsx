@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { useGeometryStore, ExperimentId } from '../../store/geometryStore';
 import { ParallelLinesExperiment } from '../experiments/ParallelLinesExperiment';
 import { TriangleExperiment } from '../experiments/TriangleExperiment';
-import { TessellationExperiment } from '../experiments/TessellationExperiment';
 import {
   Activity,
   Triangle,
-  Sparkles,
   Sliders,
   ChevronDown,
   ChevronRight,
@@ -33,22 +31,16 @@ export const ControlPanel: React.FC = () => {
     icon: React.ReactNode;
   }[] = [
     {
-      id: 'parallel-lines',
-      label: 'Parallel Lines',
-      prompt: 'Can you draw a line that never meets?',
-      icon: <Activity className="w-3.5 h-3.5 text-[#69A3FF]" />,
-    },
-    {
       id: 'triangle',
-      label: 'Triangle',
+      label: 'Triangle Lab',
       prompt: 'Can a triangle total > 180°?',
       icon: <Triangle className="w-3.5 h-3.5 text-[#FFD166]" />,
     },
     {
-      id: 'tessellation',
-      label: 'Infinite Tiles',
-      prompt: 'Why do tiles shrink outward?',
-      icon: <Sparkles className="w-3.5 h-3.5 text-[#06D6A0]" />,
+      id: 'parallel-lines',
+      label: 'Parallel Lines',
+      prompt: 'Can you draw a line that never meets?',
+      icon: <Activity className="w-3.5 h-3.5 text-[#69A3FF]" />,
     },
   ];
 
@@ -57,9 +49,9 @@ export const ControlPanel: React.FC = () => {
       {/* Top: Experiments Selector */}
       <div className="space-y-2">
         <div className="text-[10px] font-mono uppercase tracking-wider text-[#858B9A] font-semibold">
-          Select Playground Activity
+          Select Lab
         </div>
-        <div className="grid grid-cols-3 gap-1 bg-[#0D0F14] p-1 rounded-xl border border-[#292C35]">
+        <div className="grid grid-cols-2 gap-1 bg-[#0D0F14] p-1 rounded-xl border border-[#292C35]">
           {experimentTabs.map((tab) => {
             const active = experiment === tab.id;
             return (
@@ -85,57 +77,71 @@ export const ControlPanel: React.FC = () => {
       <div className="flex-1">
         {experiment === 'parallel-lines' && <ParallelLinesExperiment />}
         {experiment === 'triangle' && <TriangleExperiment />}
-        {experiment === 'tessellation' && <TessellationExperiment />}
       </div>
 
-      {/* Bottom: Minimal Advanced View Controls Toggle */}
-      <div className="pt-2 border-t border-[#20232B] space-y-2 text-xs">
+      {/* Bottom: Appearance & Controls Settings */}
+      <div className="border-t border-[#292C35] pt-3 space-y-2">
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="w-full flex items-center justify-between text-[11px] text-[#858B9A] hover:text-[#E8EAF0] transition py-1"
+          className="w-full flex items-center justify-between text-xs text-[#858B9A] hover:text-[#E8EAF0] py-1 font-mono transition"
         >
-          <span className="flex items-center gap-1.5 font-mono">
-            <Sliders className="w-3 h-3 text-[#69A3FF]" />
-            <span>Display Controls</span>
+          <span className="flex items-center gap-1.5">
+            <Sliders className="w-3.5 h-3.5" /> View Options
           </span>
-          {showAdvanced ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          {showAdvanced ? (
+            <ChevronDown className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5" />
+          )}
         </button>
 
         {showAdvanced && (
-          <div className="space-y-2.5 bg-[#0D0F14] p-2.5 rounded-lg border border-[#20232B] text-[11px]">
-            <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-[#858B9A]">Particle Surface</span>
-              <input
-                type="checkbox"
-                checked={appearance.showSurface}
-                onChange={(e) => setAppearance({ showSurface: e.target.checked })}
-                className="accent-[#69A3FF] rounded cursor-pointer"
-              />
-            </label>
-            <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-[#858B9A]">Coordinate Guides</span>
-              <input
-                type="checkbox"
-                checked={appearance.showGrid}
-                onChange={(e) => setAppearance({ showGrid: e.target.checked })}
-                className="accent-[#69A3FF] rounded cursor-pointer"
-              />
-            </label>
+          <div className="space-y-3 bg-[#0D0F14] p-3 rounded-xl border border-[#20232B] text-xs">
+            {/* Surface Opacity */}
             <div>
-              <div className="flex justify-between text-[10px] text-[#858B9A] mb-1">
-                <span>Orbit Sensitivity</span>
-                <span className="font-mono text-[#E8EAF0]">{orbitSensitivity.toFixed(1)}x</span>
+              <div className="flex justify-between text-[11px] text-[#858B9A] mb-1 font-mono">
+                <span>Surface Opacity</span>
+                <span>{(appearance.surfaceOpacity * 100).toFixed(0)}%</span>
               </div>
               <input
                 type="range"
-                min={0.5}
-                max={2.0}
-                step={0.1}
-                value={orbitSensitivity}
-                onChange={(e) => setOrbitSensitivity(parseFloat(e.target.value))}
-                className="w-full accent-[#69A3FF] h-1 bg-[#1F2229] rounded cursor-pointer"
+                min="0.05"
+                max="0.9"
+                step="0.05"
+                value={appearance.surfaceOpacity}
+                onChange={(e) =>
+                  setAppearance({ surfaceOpacity: parseFloat(e.target.value) })
+                }
+                className="w-full h-1 bg-[#20232B] rounded-lg appearance-none cursor-pointer accent-[#69A3FF]"
               />
             </div>
+
+            {/* Orbit Sensitivity */}
+            <div>
+              <div className="flex justify-between text-[11px] text-[#858B9A] mb-1 font-mono">
+                <span>Orbit Sensitivity</span>
+                <span>{orbitSensitivity.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min="0.2"
+                max="2.5"
+                step="0.1"
+                value={orbitSensitivity}
+                onChange={(e) =>
+                  setOrbitSensitivity(parseFloat(e.target.value))
+                }
+                className="w-full h-1 bg-[#20232B] rounded-lg appearance-none cursor-pointer accent-[#69A3FF]"
+              />
+            </div>
+
+            {/* Reset Camera Button */}
+            <button
+              onClick={resetCamera}
+              className="w-full py-1.5 px-2 rounded-lg bg-[#181B22] hover:bg-[#202530] text-[#858B9A] hover:text-[#E8EAF0] border border-[#292C35] text-[11px] font-mono flex items-center justify-center gap-1.5 transition"
+            >
+              <RotateCcw className="w-3 h-3" /> Reset Camera
+            </button>
           </div>
         )}
       </div>

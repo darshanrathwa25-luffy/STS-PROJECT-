@@ -3,10 +3,10 @@ import { GeometryKind, Point2D, Point3D, GeodesicCurve } from '../geometry-engin
 import { soundManager } from '../utils/audio';
 
 export type { GeometryKind };
-export type ExperimentId = 'parallel-lines' | 'triangle' | 'tessellation';
+export type ExperimentId = 'parallel-lines' | 'triangle';
 export type ToolType = 'select' | 'point' | 'geodesic' | 'polygon' | 'measure';
-export type AppMode = 'explore' | 'compare';
-export type HyperbolicRepresentation = 'poincare' | 'pseudosphere' | 'compare';
+export type AppMode = 'explore';
+export type HyperbolicRepresentation = 'saddle' | 'poincare';
 export type StsCaseStudyId = 'history' | 'navigation' | 'gravity' | 'models';
 export type AppSection = 'lab' | 'sts';
 
@@ -40,21 +40,12 @@ export interface AppearanceState {
 export interface GeometryStore {
   // Navigation & Mode
   geometry: GeometryKind;
-  compareGeometry: GeometryKind;
   mode: AppMode;
   experiment: ExperimentId;
   tool: ToolType;
 
-  // Hyperbolic Specific Representation
+  // Hyperbolic Specific Representation (Saddle in Triangle lab, Poincaré disk in Parallel lab)
   hyperbolicRepresentation: HyperbolicRepresentation;
-
-  // Infinite Tiles (Experiment 03) State
-  tilingP: number;
-  tilingQ: number;
-  selectedTileId: string | null;
-  hoveredTileId: string | null;
-  showTileOutlines: boolean;
-  showTileFill: boolean;
 
   // Audio
   soundEnabled: boolean;
@@ -75,29 +66,19 @@ export interface GeometryStore {
   // Contextual instruction text
   instructionText: string;
 
-  // Legacy / STS & Circle support
+  // STS support
   appSection: AppSection;
   activeStsCaseStudy: StsCaseStudyId;
-  circleRadius: number;
 
   // Actions
   setAppSection: (section: AppSection) => void;
   setStsCaseStudy: (id: StsCaseStudyId) => void;
-  setCircleRadius: (radius: number) => void;
   setGeometry: (geometry: GeometryKind) => void;
-  setCompareGeometry: (geometry: GeometryKind) => void;
   setMode: (mode: AppMode) => void;
   setExperiment: (experiment: ExperimentId) => void;
   setTool: (tool: ToolType) => void;
   setSoundEnabled: (enabled: boolean) => void;
   setHyperbolicRepresentation: (rep: HyperbolicRepresentation) => void;
-
-  // Tiling actions
-  setTilingPattern: (p: number, q: number) => void;
-  setSelectedTileId: (id: string | null) => void;
-  setHoveredTileId: (id: string | null) => void;
-  setShowTileOutlines: (show: boolean) => void;
-  setShowTileFill: (show: boolean) => void;
 
   // Point management
   addPoint: (point: Omit<ScenePoint, 'id'>) => void;
@@ -121,25 +102,15 @@ export interface GeometryStore {
 }
 
 export const useGeometryStore = create<GeometryStore>((set, get) => ({
-  geometry: 'hyperbolic',
-  compareGeometry: 'euclidean',
+  geometry: 'euclidean',
   mode: 'explore',
-  experiment: 'tessellation',
+  experiment: 'triangle',
   tool: 'select',
-  hyperbolicRepresentation: 'poincare',
+  hyperbolicRepresentation: 'saddle',
   soundEnabled: false,
 
   appSection: 'lab',
-  activeStsCaseStudy: 'history',
-  circleRadius: 1.0,
-
-  // Default tiling is {7, 3} heptagonal tiling (as in reference Image 2)
-  tilingP: 7,
-  tilingQ: 3,
-  selectedTileId: null,
-  hoveredTileId: null,
-  showTileOutlines: true,
-  showTileFill: true,
+  activeStsCaseStudy: 'navigation',
 
   points: [],
   geodesics: [],
@@ -155,7 +126,7 @@ export const useGeometryStore = create<GeometryStore>((set, get) => ({
   },
 
   appearance: {
-    particleCount: 4000,
+    particleCount: 2000,
     pointSize: 0.045,
     surfaceOpacity: 0.45,
     showGrid: true,
@@ -166,20 +137,15 @@ export const useGeometryStore = create<GeometryStore>((set, get) => ({
 
   orbitSensitivity: 1.0,
   cameraResetSeq: 0,
-  instructionText: 'Why do the tiles look smaller as you move outward? They look smaller, but are they?',
+  instructionText: 'Can you make a triangle with more than 180 degrees? Drag the vertices to explore.',
 
   setAppSection: (appSection) => set({ appSection }),
   setStsCaseStudy: (activeStsCaseStudy) => set({ activeStsCaseStudy }),
-  setCircleRadius: (circleRadius) => set({ circleRadius }),
 
   setGeometry: (geometry: GeometryKind) => {
     soundManager.playGeometrySwitch();
     set({ geometry });
     get().loadExperiment(get().experiment);
-  },
-
-  setCompareGeometry: (compareGeometry: GeometryKind) => {
-    set({ compareGeometry });
   },
 
   setMode: (mode: AppMode) => {
@@ -209,28 +175,6 @@ export const useGeometryStore = create<GeometryStore>((set, get) => ({
   setHyperbolicRepresentation: (hyperbolicRepresentation) => {
     soundManager.playSelectTick();
     set({ hyperbolicRepresentation });
-  },
-
-  setTilingPattern: (p, q) => {
-    soundManager.playSelectTick();
-    set({ tilingP: p, tilingQ: q, selectedTileId: null });
-  },
-
-  setSelectedTileId: (id) => {
-    if (id) soundManager.playPointClick();
-    set({ selectedTileId: id });
-  },
-
-  setHoveredTileId: (id) => {
-    set({ hoveredTileId: id });
-  },
-
-  setShowTileOutlines: (show) => {
-    set({ showTileOutlines: show });
-  },
-
-  setShowTileFill: (show) => {
-    set({ showTileFill: show });
   },
 
   addPoint: (pointData) => {
@@ -313,15 +257,15 @@ export const useGeometryStore = create<GeometryStore>((set, get) => ({
 
     if (exp === 'parallel-lines') {
       set({
-        instructionText: 'Can you draw a line that never meets this one? Adjust the angle slider on the right.',
+        instructionText: 'Can you draw a line through P that never meets L?',
       });
     } else if (exp === 'triangle') {
       if (geometry === 'euclidean') {
         set({
           points: [
-            { id: 'tri-1', position: { x: -2.8, y: 0.02, z: -1.2 }, nativeCoords: { x: -2.8, y: -1.2 }, label: 'A' },
-            { id: 'tri-2', position: { x: 2.8, y: 0.02, z: -1.2 }, nativeCoords: { x: 2.8, y: -1.2 }, label: 'B' },
-            { id: 'tri-3', position: { x: 0, y: 0.02, z: 2.4 }, nativeCoords: { x: 0, y: 2.4 }, label: 'C' },
+            { id: 'tri-1', position: { x: -2.0, y: 0.02, z: -1.0 }, nativeCoords: { x: -2.0, y: -1.0 }, label: 'A' },
+            { id: 'tri-2', position: { x: 2.0, y: 0.02, z: -1.0 }, nativeCoords: { x: 2.0, y: -1.0 }, label: 'B' },
+            { id: 'tri-3', position: { x: 0, y: 0.02, z: 1.8 }, nativeCoords: { x: 0, y: 1.8 }, label: 'C' },
           ],
           instructionText: 'Can you make a triangle with more than 180 degrees? Drag the vertices to see.',
         });
@@ -336,23 +280,16 @@ export const useGeometryStore = create<GeometryStore>((set, get) => ({
           instructionText: 'Can you make a triangle with more than 180 degrees? On a sphere, sum > 180°!',
         });
       } else {
+        // Hyperbolic saddle vertices in (u, v)
         set({
           points: [
-            { id: 'tri-1', position: { x: -0.45, y: 0.02, z: -0.35 }, nativeCoords: { x: -0.45, y: -0.35 }, label: 'A' },
-            { id: 'tri-2', position: { x: 0.45, y: 0.02, z: -0.35 }, nativeCoords: { x: 0.45, y: -0.35 }, label: 'B' },
-            { id: 'tri-3', position: { x: 0, y: 0.02, z: 0.55 }, nativeCoords: { x: 0, y: 0.55 }, label: 'C' },
+            { id: 'tri-1', position: { x: -1.2, y: 0.5 * (1.44 - 0.64), z: -0.8 }, nativeCoords: { x: -1.2, y: -0.8 }, label: 'A' },
+            { id: 'tri-2', position: { x: 1.2, y: 0.5 * (1.44 - 0.64), z: -0.8 }, nativeCoords: { x: 1.2, y: -0.8 }, label: 'B' },
+            { id: 'tri-3', position: { x: 0.0, y: -0.5 * 1.96, z: 1.4 }, nativeCoords: { x: 0.0, y: 1.4 }, label: 'C' },
           ],
-          instructionText: 'Can you make a triangle with more than 180 degrees? In hyperbolic space, sum < 180°!',
+          instructionText: 'Can you make a triangle with more than 180 degrees? On a saddle, sum < 180°!',
         });
       }
-    } else if (exp === 'tessellation') {
-      // Automatically switch to hyperbolic when tessellation is chosen
-      if (geometry !== 'hyperbolic') {
-        set({ geometry: 'hyperbolic' });
-      }
-      set({
-        instructionText: 'Why do the tiles look smaller as you move outward? They look smaller, but are they?',
-      });
     }
   },
 }));

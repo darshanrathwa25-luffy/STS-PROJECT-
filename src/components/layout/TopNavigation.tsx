@@ -4,15 +4,11 @@ import {
   Compass,
   Volume2,
   VolumeX,
-  Layers,
-  Columns,
   Github,
 } from 'lucide-react';
 
 export const TopNavigation: React.FC = () => {
   const {
-    mode,
-    setMode,
     soundEnabled,
     setSoundEnabled,
   } = useGeometryStore();
@@ -30,41 +26,12 @@ export const TopNavigation: React.FC = () => {
               Curvature Lab
             </span>
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#181B22] text-[#69A3FF] border border-[#69A3FF]/30">
-              Interactive
+              STS Playground
             </span>
           </div>
           <p className="text-[10px] text-[#858B9A] -mt-0.5 font-sans">
-            Non-Euclidean Geometry Playground
+            Non-Euclidean Geometry Laboratory
           </p>
-        </div>
-      </div>
-
-      {/* Center: Explore & Compare Mode Toggle */}
-      <div className="flex items-center gap-3">
-        <div className="flex bg-[#0D0F14] p-1 rounded-lg border border-[#292C35]">
-          <button
-            onClick={() => setMode('explore')}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-md transition ${
-              mode === 'explore'
-                ? 'bg-[#181B22] text-[#69A3FF] font-semibold border border-[#69A3FF]/30 shadow-sm'
-                : 'text-[#858B9A] hover:text-[#E8EAF0]'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Explore</span>
-          </button>
-
-          <button
-            onClick={() => setMode('compare')}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-md transition ${
-              mode === 'compare'
-                ? 'bg-[#181B22] text-[#69A3FF] font-semibold border border-[#69A3FF]/30 shadow-sm'
-                : 'text-[#858B9A] hover:text-[#E8EAF0]'
-            }`}
-          >
-            <Columns className="w-3.5 h-3.5" />
-            <span>Compare</span>
-          </button>
         </div>
       </div>
 
@@ -97,7 +64,7 @@ export const TopNavigation: React.FC = () => {
           target="_blank"
           rel="noopener noreferrer"
           className="p-1.5 rounded-lg bg-[#181B22] hover:bg-[#202530] text-[#858B9A] hover:text-[#E8EAF0] border border-[#292C35] transition"
-          title="Repository"
+          title="GitHub Repository"
         >
           <Github className="w-4 h-4" />
         </a>

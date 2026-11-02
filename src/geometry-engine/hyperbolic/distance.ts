@@ -1,6 +1,5 @@
 import { Point2D, TriangleMeasurements } from '../shared/types';
 import { normSq2D, distSq2D } from '../shared/vectors';
-import { translate, apply } from './mobius';
 
 /**
  * Validate that a point lies strictly inside the unit Poincaré disk (|u| < 1)
@@ -96,15 +95,19 @@ export function angleOfParallelism(distance: number): number {
  * geodesics map to straight Euclidean rays through 0, and the phase at v is preserved identically.
  */
 export function hyperbolicTangentAt(v: Point2D, p: Point2D): Point2D {
-  const m = translate(v);
-  const mappedP = apply(m, p);
-  const norm = Math.hypot(mappedP.x, mappedP.y);
+  const dx = p.x - v.x;
+  const dy = p.y - v.y;
+  const A = 1 - (v.x * p.x + v.y * p.y);
+  const B = -(v.x * p.y - v.y * p.x);
+  const wx = dx * A + dy * B;
+  const wy = dy * A - dx * B;
+  const norm = Math.hypot(wx, wy);
   if (norm < 1e-12) {
     return { x: 0, y: 0 };
   }
   return {
-    x: mappedP.x / norm,
-    y: mappedP.y / norm,
+    x: wx / norm,
+    y: wy / norm,
   };
 }
 

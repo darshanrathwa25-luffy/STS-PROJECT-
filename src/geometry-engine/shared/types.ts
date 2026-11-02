@@ -96,16 +96,6 @@ export interface HyperbolicCoords {
 
 export type NativeCoords = EuclideanCoords | SphericalCoords | HyperbolicCoords;
 
-export interface ComplexNum {
-  re: number;
-  im: number;
-}
-
-export interface MobiusMatrix {
-  p: ComplexNum;
-  q: ComplexNum;
-}
-
 export interface TriangleSidesAngleSums {
   flat: number | null;
   sphere: number | null;

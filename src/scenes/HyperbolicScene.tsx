@@ -10,7 +10,6 @@ import {
   intersectHyperbolicGeodesics,
   angleOfParallelism,
   hyperbolicDistance,
-  generateHyperbolicTessellation,
   degToRad,
   radToDeg,
 } from '../geometry-engine';
@@ -21,14 +20,6 @@ export const HyperbolicScene: React.FC = () => {
     appearance,
     experiment,
     parallelExperiment,
-    tilingP,
-    tilingQ,
-    selectedTileId,
-    hoveredTileId,
-    showTileOutlines,
-    showTileFill,
-    setSelectedTileId,
-    setHoveredTileId,
     tool,
     addPoint,
     selectPoint,
@@ -39,15 +30,6 @@ export const HyperbolicScene: React.FC = () => {
   const { candidateAngleDeg, showFan } = parallelExperiment;
 
   const DISK_RADIUS = 3.5;
-
-  // Generate regular hyperbolic tessellation when in tessellation mode
-  const tiles = useMemo(() => {
-    try {
-      return generateHyperbolicTessellation(tilingP, tilingQ, 3, DISK_RADIUS);
-    } catch {
-      return generateHyperbolicTessellation(7, 3, 3, DISK_RADIUS);
-    }
-  }, [tilingP, tilingQ, DISK_RADIUS]);
 
   // Concentric equal-hyperbolic-distance rings using r = tanh(d / 2)
   const hyperbolicRings = useMemo(() => {
@@ -278,82 +260,8 @@ export const HyperbolicScene: React.FC = () => {
         <meshBasicMaterial color="#3A4356" transparent opacity={0.4} />
       </mesh>
 
-      {/* ============================================================== */}
-      {/* EXPERIMENT 03: REGULAR HYPERBOLIC TESSELLATION */}
-      {/* ============================================================== */}
-      {experiment === 'tessellation' && (
-        <group>
-          {tiles.map((tile) => {
-            const isSelected = tile.id === selectedTileId;
-            const isHovered = tile.id === hoveredTileId;
-
-            // Tile center in 3D scene
-            const cx = tile.center.x * DISK_RADIUS;
-            const cz = tile.center.y * DISK_RADIUS;
-
-            return (
-              <group key={tile.id}>
-                {/* Tile Center Hit Target / Marker */}
-                <mesh
-                  position={[cx, 0.018, cz]}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedTileId(isSelected ? null : tile.id);
-                  }}
-                  onPointerOver={(e) => {
-                    e.stopPropagation();
-                    setHoveredTileId(tile.id);
-                  }}
-                  onPointerOut={() => {
-                    if (hoveredTileId === tile.id) setHoveredTileId(null);
-                  }}
-                >
-                  <sphereGeometry args={[isSelected ? 0.08 : 0.045, 12, 12]} />
-                  <meshBasicMaterial
-                    color={isSelected ? '#69A3FF' : isHovered ? '#FFD166' : '#2A354C'}
-                  />
-                </mesh>
-
-                {/* Geodesic Edge Outlines */}
-                {showTileOutlines &&
-                  tile.boundarySegments.map((segPts, sIdx) => {
-                    const isCentral = tile.depth === 0;
-                    return (
-                      <line key={`${tile.id}-seg-${sIdx}`}>
-                        <bufferGeometry>
-                          <bufferAttribute
-                            attach="attributes-position"
-                            count={segPts.length}
-                            array={new Float32Array(segPts.flatMap((v) => [v.x, v.y, v.z]))}
-                            itemSize={3}
-                          />
-                        </bufferGeometry>
-                        <lineBasicMaterial
-                          color={
-                            isSelected
-                              ? '#69A3FF'
-                              : isHovered
-                              ? '#FFD166'
-                              : isCentral
-                              ? '#E8EAF0'
-                              : '#425270'
-                          }
-                          linewidth={isSelected || isCentral ? 2 : 1}
-                          transparent
-                          opacity={tile.depth === 0 ? 0.95 : tile.depth === 1 ? 0.8 : 0.6}
-                        />
-                      </line>
-                    );
-                  })}
-              </group>
-            );
-          })}
-        </group>
-      )}
-
       {/* Concentric equal-hyperbolic-distance rings */}
       {showGrid &&
-        experiment !== 'tessellation' &&
         hyperbolicRings.map((ring, idx) => (
           <line key={`ring-${idx}`}>
             <bufferGeometry>

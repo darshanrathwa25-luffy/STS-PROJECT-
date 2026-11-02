@@ -16,9 +16,7 @@ export * from './spherical/intersections';
 
 // Hyperbolic
 export * from './hyperbolic/distance';
-export * from './hyperbolic/mobius';
 export * from './hyperbolic/poincareDisk';
 export * from './hyperbolic/geodesics';
 export * from './hyperbolic/intersections';
-export * from './hyperbolic/pseudosphere';
-export * from './hyperbolic/tessellation';
+export * from './hyperbolic/saddle';

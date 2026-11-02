@@ -2,25 +2,20 @@ import React, { useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import { useGeometryStore, GeometryKind, HyperbolicRepresentation } from '../../store/geometryStore';
+import { useGeometryStore, GeometryKind } from '../../store/geometryStore';
 import { EuclideanScene } from '../../scenes/EuclideanScene';
 import { SphericalScene } from '../../scenes/SphericalScene';
 import { HyperbolicScene } from '../../scenes/HyperbolicScene';
-import { PseudosphereScene } from '../../scenes/PseudosphereScene';
-import { HyperbolicCompareView } from './HyperbolicCompareView';
-import { RotateCcw, Info, Disc, Waves, Sparkles } from 'lucide-react';
+import { RotateCcw, Sparkles } from 'lucide-react';
 
 export const GeometryCanvas: React.FC = () => {
   const {
     geometry,
     setGeometry,
-    hyperbolicRepresentation,
-    setHyperbolicRepresentation,
     instructionText,
     orbitSensitivity,
     cameraResetSeq,
     resetCamera,
-    experiment,
   } = useGeometryStore();
 
   const controlsRef = useRef<OrbitControlsImpl>(null);
@@ -33,43 +28,12 @@ export const GeometryCanvas: React.FC = () => {
       } else if (geometry === 'euclidean') {
         controlsRef.current.object.position.set(0, 8.5, 9.5);
       } else {
-        if (hyperbolicRepresentation === 'pseudosphere') {
-          controlsRef.current.object.position.set(0, 4, 6.5);
-        } else {
-          // Orthogonal view for Poincare disk
-          controlsRef.current.object.position.set(0, 7.2, 7.2);
-        }
+        controlsRef.current.object.position.set(0, 5.0, 6.5);
       }
       controlsRef.current.target.set(0, 0, 0);
       controlsRef.current.update();
     }
-  }, [cameraResetSeq, geometry, hyperbolicRepresentation]);
-
-  // If user chose dual hyperbolic representation compare mode
-  if (geometry === 'hyperbolic' && hyperbolicRepresentation === 'compare') {
-    return (
-      <div className="relative w-full h-full">
-        {/* Floating Representation Switcher */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex bg-[#12141A]/95 backdrop-blur-md p-1 rounded-lg border border-[#292C35] shadow-panel">
-          <button
-            onClick={() => setHyperbolicRepresentation('poincare')}
-            className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-[#858B9A] hover:text-[#E8EAF0] rounded"
-          >
-            <Disc className="w-3.5 h-3.5" />
-            <span>Poincaré Disk</span>
-          </button>
-          <button
-            onClick={() => setHyperbolicRepresentation('pseudosphere')}
-            className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-[#858B9A] hover:text-[#E8EAF0] rounded"
-          >
-            <Waves className="w-3.5 h-3.5" />
-            <span>Curved Surface</span>
-          </button>
-        </div>
-        <HyperbolicCompareView />
-      </div>
-    );
-  }
+  }, [cameraResetSeq, geometry]);
 
   const geometryTabs: { id: GeometryKind; label: string; sub: string }[] = [
     { id: 'euclidean', label: 'Euclidean', sub: 'Flat (K = 0)' },
@@ -108,9 +72,7 @@ export const GeometryCanvas: React.FC = () => {
         {/* Geometry Scenes */}
         {geometry === 'euclidean' && <EuclideanScene />}
         {geometry === 'spherical' && <SphericalScene />}
-        {geometry === 'hyperbolic' && (
-          hyperbolicRepresentation === 'pseudosphere' ? <PseudosphereScene /> : <HyperbolicScene />
-        )}
+        {geometry === 'hyperbolic' && <HyperbolicScene />}
       </Canvas>
 
       {/* Floating Geometry Selector (Top Center) */}
@@ -133,34 +95,6 @@ export const GeometryCanvas: React.FC = () => {
           );
         })}
       </div>
-
-      {/* Hyperbolic Model Switcher (Pill beneath selector when in hyperbolic mode) */}
-      {geometry === 'hyperbolic' && experiment !== 'tessellation' && (
-        <div className="absolute top-18 left-1/2 -translate-x-1/2 z-10 flex bg-[#12141A]/90 backdrop-blur-md p-0.5 rounded-lg border border-[#292C35] text-[11px]">
-          <button
-            onClick={() => setHyperbolicRepresentation('poincare')}
-            className={`px-2.5 py-1 rounded flex items-center gap-1.5 transition ${
-              hyperbolicRepresentation === 'poincare'
-                ? 'bg-[#181B22] text-[#69A3FF] font-semibold'
-                : 'text-[#858B9A] hover:text-[#E8EAF0]'
-            }`}
-          >
-            <Disc className="w-3 h-3" />
-            <span>Poincaré Disk</span>
-          </button>
-          <button
-            onClick={() => setHyperbolicRepresentation('pseudosphere')}
-            className={`px-2.5 py-1 rounded flex items-center gap-1.5 transition ${
-              hyperbolicRepresentation === 'pseudosphere'
-                ? 'bg-[#181B22] text-[#69A3FF] font-semibold'
-                : 'text-[#858B9A] hover:text-[#E8EAF0]'
-            }`}
-          >
-            <Waves className="w-3 h-3" />
-            <span>Pseudosphere</span>
-          </button>
-        </div>
-      )}
 
       {/* Camera Reset (Top-Right) */}
       <div className="absolute top-4 right-4 z-10">
