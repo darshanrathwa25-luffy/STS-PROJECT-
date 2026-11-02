@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #090A0D;
+  color: #E8EAF0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scientific scrollbar for Control Panel */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #12141A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #292C35;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3A3F4C;
+}
+
+/* Range input styling */
+input[type="range"] {
+  accent-color: #69A3FF;
+}
+
+/* Canvas styling */
+canvas {
+  outline: none;
+}
+
