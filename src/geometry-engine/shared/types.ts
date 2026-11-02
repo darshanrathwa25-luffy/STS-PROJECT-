@@ -72,5 +72,49 @@ export interface TriangleMeasurements {
   angleSumDeg: number;
   area: number;
   excessOrDefect: number; // spherical excess or hyperbolic defect
+  degenerate?: boolean;
+}
+
+export interface EuclideanCoords {
+  kind: 'euclidean';
+  x: number;
+  y: number;
+}
+
+export interface SphericalCoords {
+  kind: 'spherical';
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface HyperbolicCoords {
+  kind: 'hyperbolic';
+  x: number;
+  y: number;
+}
+
+export type NativeCoords = EuclideanCoords | SphericalCoords | HyperbolicCoords;
+
+export interface ComplexNum {
+  re: number;
+  im: number;
+}
+
+export interface MobiusMatrix {
+  p: ComplexNum;
+  q: ComplexNum;
+}
+
+export interface TriangleSidesAngleSums {
+  flat: number | null;
+  sphere: number | null;
+  hyperbolic: number | null;
+}
+
+export interface ConstructedTriangle<T> {
+  a: T;
+  b: T;
+  c: T;
 }
 

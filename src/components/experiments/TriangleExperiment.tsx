@@ -51,8 +51,8 @@ export const TriangleExperiment: React.FC = () => {
         const p1 = points[0].nativeCoords as { x: number; y: number };
         const p2 = points[1].nativeCoords as { x: number; y: number };
         const p3 = points[2].nativeCoords as { x: number; y: number };
-        // Approximate hyperbolic angles
-        const res = hyperbolicTriangle(p1, p2, p3, 0.75, 0.82, 0.61);
+        // Exact hyperbolic angles
+        const res = hyperbolicTriangle(p1, p2, p3);
         const defectDeg = radToDeg(res.excessOrDefect);
         return {
           ...res,

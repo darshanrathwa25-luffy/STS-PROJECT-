@@ -1,4 +1,4 @@
-import { Point2D } from '../shared/types';
+import { Point2D, TriangleMeasurements } from '../shared/types';
 import { dist2D, distSq2D } from '../shared/vectors';
 
 /**
@@ -24,25 +24,72 @@ export function euclideanPointToLineDistance(p: Point2D, a: Point2D, b: Point2D)
   return numerator / Math.sqrt(l2);
 }
 
+function safeAcos(val: number): { angle: number; clampedDegenerate: boolean } {
+  if (isNaN(val)) return { angle: 0, clampedDegenerate: true };
+  let clampedDegenerate = false;
+  if (val > 1) {
+    if (val - 1 > 1e-6) clampedDegenerate = true;
+    val = 1;
+  } else if (val < -1) {
+    if (-1 - val > 1e-6) clampedDegenerate = true;
+    val = -1;
+  }
+  return { angle: Math.acos(val), clampedDegenerate };
+}
+
 /**
- * Compute triangle interior angles and area (K = 0)
+ * Compute triangle interior angles and area (K = 0).
+ * Always returns angles in (0, pi) and never NaN.
+ * Flags degenerate: true for coincident, collinear or invalid vertices.
  */
-export function euclideanTriangle(a: Point2D, b: Point2D, c: Point2D) {
+export function euclideanTriangle(a: Point2D, b: Point2D, c: Point2D): TriangleMeasurements {
   const sideA = euclideanDistance(b, c);
   const sideB = euclideanDistance(a, c);
   const sideC = euclideanDistance(a, b);
 
-  // Law of cosines
-  const cosAlpha = (sideB * sideB + sideC * sideC - sideA * sideA) / (2 * sideB * sideC);
-  const cosBeta = (sideA * sideA + sideC * sideC - sideB * sideB) / (2 * sideA * sideC);
-  const cosGamma = (sideA * sideA + sideB * sideB - sideC * sideC) / (2 * sideA * sideB);
+  let degenerate = false;
+  if (sideA < 1e-7 || sideB < 1e-7 || sideC < 1e-7) {
+    degenerate = true;
+  }
 
-  const alpha = Math.acos(Math.max(-1, Math.min(1, cosAlpha)));
-  const beta = Math.acos(Math.max(-1, Math.min(1, cosBeta)));
-  const gamma = Math.acos(Math.max(-1, Math.min(1, cosGamma)));
+  const denomA = 2 * sideB * sideC;
+  const denomB = 2 * sideA * sideC;
+  const denomC = 2 * sideA * sideB;
 
-  // Area via cross product
+  if (denomA < 1e-14 || denomB < 1e-14 || denomC < 1e-14) {
+    degenerate = true;
+  }
+
+  const cosAlphaRaw = denomA > 1e-14 ? (sideB * sideB + sideC * sideC - sideA * sideA) / denomA : 1;
+  const cosBetaRaw = denomB > 1e-14 ? (sideA * sideA + sideC * sideC - sideB * sideB) / denomB : 1;
+  const cosGammaRaw = denomC > 1e-14 ? (sideA * sideA + sideB * sideB - sideC * sideC) / denomC : 1;
+
+  const resA = safeAcos(cosAlphaRaw);
+  const resB = safeAcos(cosBetaRaw);
+  const resC = safeAcos(cosGammaRaw);
+
+  if (resA.clampedDegenerate || resB.clampedDegenerate || resC.clampedDegenerate) {
+    degenerate = true;
+  }
+
+  const alpha = resA.angle;
+  const beta = resB.angle;
+  const gamma = resC.angle;
+
+  if (
+    alpha <= 1e-6 || beta <= 1e-6 || gamma <= 1e-6 ||
+    alpha >= Math.PI - 1e-6 || beta >= Math.PI - 1e-6 || gamma >= Math.PI - 1e-6
+  ) {
+    degenerate = true;
+  }
+
+  // Area via 2D cross product
   const area = 0.5 * Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+  if (area < 1e-7) {
+    degenerate = true;
+  }
+
+  const angleSum = alpha + beta + gamma;
 
   return {
     a: sideA,
@@ -51,10 +98,11 @@ export function euclideanTriangle(a: Point2D, b: Point2D, c: Point2D) {
     alpha,
     beta,
     gamma,
-    angleSum: alpha + beta + gamma,
-    angleSumDeg: ((alpha + beta + gamma) * 180) / Math.PI, // strictly 180°
+    angleSum,
+    angleSumDeg: (angleSum * 180) / Math.PI,
     area,
     excessOrDefect: 0,
+    degenerate,
   };
 }
 

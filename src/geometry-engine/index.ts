@@ -2,6 +2,7 @@ export * from './shared/types';
 export * from './shared/numerical';
 export * from './shared/vectors';
 export * from './shared/circleMetrics';
+export * from './shared/triangleConstruction';
 
 // Euclidean
 export * from './euclidean/distance';
@@ -15,6 +16,7 @@ export * from './spherical/intersections';
 
 // Hyperbolic
 export * from './hyperbolic/distance';
+export * from './hyperbolic/mobius';
 export * from './hyperbolic/poincareDisk';
 export * from './hyperbolic/geodesics';
 export * from './hyperbolic/intersections';
