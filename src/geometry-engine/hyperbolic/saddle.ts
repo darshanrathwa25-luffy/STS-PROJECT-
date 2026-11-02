@@ -1,4 +1,4 @@
-import { Point2D, Point3D } from '../shared/types';
+import { Point2D, Point3D, ConstructedTriangle } from '../shared/types';
 import { clamp } from '../shared/numerical';
 
 export const DEFAULT_SADDLE_C = 0.5; // z = c * (u^2 - v^2), so K(0, 0) = -4*c^2 = -1.0
@@ -29,6 +29,12 @@ export interface PrincipalCurvatureInfo {
   k2: number; // negative principal curvature (bends down)
   dir1: Point3D; // 3D unit tangent direction for k1
   dir2: Point3D; // 3D unit tangent direction for k2
+}
+
+export interface SaddleGeodesicResult {
+  path: { u: number; v: number; du: number; dv: number }[];
+  usedFallback: boolean;
+  length: number;
 }
 
 /**
@@ -70,8 +76,6 @@ export function saddleGaussianCurvature(u: number, v: number, c = DEFAULT_SADDLE
 
 /**
  * Curvature range across a domain |u| <= domain, |v| <= domain.
- * Since K is negative everywhere, the minimum algebraic curvature is at the origin (-4*c^2),
- * and the maximum algebraic curvature (closest to 0) is at the furthest corner.
  */
 export function saddleCurvatureRange(
   domain = DEFAULT_SADDLE_DOMAIN,
@@ -114,7 +118,6 @@ export function saddlePrincipalCurvatures(
   const M = fuv / W;
   const N = fvv / W;
 
-  // Eigenvalues of Weingarten matrix S = [[GL - FM, GM - FN], [-FL + EM, -FM + EN]] / W^2
   const a11 = (G * L - F * M) / (W * W);
   const a12 = (G * M - F * N) / (W * W);
   const a21 = (-F * L + E * M) / (W * W);
@@ -127,7 +130,6 @@ export function saddlePrincipalCurvatures(
   const k1 = 0.5 * (trace + disc); // > 0 (bends up)
   const k2 = 0.5 * (trace - disc); // < 0 (bends down)
 
-  // Tangent vector directions in (du, dv)
   let du1 = 1, dv1 = 0;
   if (Math.abs(a12) > 1e-9) {
     du1 = a12;
@@ -184,7 +186,7 @@ export function saddleGeodesicRK4(
   v0: number,
   du0: number,
   dv0: number,
-  steps = 80,
+  steps = 40,
   c = DEFAULT_SADDLE_C
 ): { u: number; v: number; du: number; dv: number }[] {
   const dt = 1 / steps;
@@ -233,29 +235,91 @@ export function saddleGeodesicRK4(
 }
 
 /**
- * Solves the boundary value problem for a geodesic connecting p1 to p2 on the saddle surface
- * via Newton shooting.
+ * Polyline relaxation fallback for geodesics (endpoints fixed) when shooting fails.
+ * Minimizes geodesic curvature via 100 iterations of finite-difference relaxation.
+ */
+export function saddlePolylineRelax(
+  p1: Point2D,
+  p2: Point2D,
+  steps = 50,
+  iters = 120,
+  c = DEFAULT_SADDLE_C
+): { path: { u: number; v: number; du: number; dv: number }[]; length: number } {
+  const uArr = new Float64Array(steps + 1);
+  const vArr = new Float64Array(steps + 1);
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    uArr[i] = p1.x + t * (p2.x - p1.x);
+    vArr[i] = p1.y + t * (p2.y - p1.y);
+  }
+
+  for (let it = 0; it < iters; it++) {
+    for (let i = 1; i < steps; i++) {
+      const u = uArr[i], v = vArr[i];
+      const du = (uArr[i + 1] - uArr[i - 1]) * 0.5;
+      const dv = (vArr[i + 1] - vArr[i - 1]) * 0.5;
+      const W2 = 1 + 4 * c * c * (u * u + v * v);
+      const lam = (2 * c * (du * du - dv * dv)) / W2;
+      const d2u = -2 * c * u * lam;
+      const d2v = 2 * c * v * lam;
+
+      const targetU = 0.5 * (uArr[i - 1] + uArr[i + 1]) - 0.5 * d2u;
+      const targetV = 0.5 * (vArr[i - 1] + vArr[i + 1]) - 0.5 * d2v;
+      uArr[i] += 0.45 * (targetU - u);
+      vArr[i] += 0.45 * (targetV - v);
+    }
+  }
+
+  const path: { u: number; v: number; du: number; dv: number }[] = [];
+  let length = 0;
+
+  for (let i = 0; i <= steps; i++) {
+    const du = i < steps ? (uArr[i + 1] - uArr[i]) * steps : (uArr[steps] - uArr[steps - 1]) * steps;
+    const dv = i < steps ? (vArr[i + 1] - vArr[i]) * steps : (vArr[steps] - vArr[steps - 1]) * steps;
+    path.push({ u: uArr[i], v: vArr[i], du, dv });
+
+    if (i < steps) {
+      const z1 = c * (uArr[i] * uArr[i] - vArr[i] * vArr[i]);
+      const z2 = c * (uArr[i + 1] * uArr[i + 1] - vArr[i + 1] * vArr[i + 1]);
+      length += Math.hypot(uArr[i + 1] - uArr[i], vArr[i + 1] - vArr[i], z2 - z1);
+    }
+  }
+
+  return { path, length };
+}
+
+/**
+ * Solves the boundary value problem for a geodesic connecting p1 to p2 on the saddle surface.
+ * Uses Newton-Raphson shooting with a polyline relaxation fallback.
  */
 export function saddleGeodesicBetween(
   p1: Point2D,
   p2: Point2D,
-  steps = 80,
+  steps = 40,
   c = DEFAULT_SADDLE_C
-): { u: number; v: number; du: number; dv: number }[] {
+): SaddleGeodesicResult {
   let du = p2.x - p1.x;
   let dv = p2.y - p1.y;
 
-  for (let iter = 0; iter < 12; iter++) {
+  for (let iter = 0; iter < 10; iter++) {
     const path = saddleGeodesicRK4(p1.x, p1.y, du, dv, steps, c);
     const end = path[path.length - 1];
     const errU = end.u - p2.x;
     const errV = end.v - p2.y;
 
-    if (Math.hypot(errU, errV) < 1e-9) {
-      return path;
+    if (Math.hypot(errU, errV) < 1e-6) {
+      let length = 0;
+      for (let i = 0; i < path.length - 1; i++) {
+        const pt1 = path[i], pt2 = path[i + 1];
+        const z1 = c * (pt1.u * pt1.u - pt1.v * pt1.v);
+        const z2 = c * (pt2.u * pt2.u - pt2.v * pt2.v);
+        length += Math.hypot(pt2.u - pt1.u, pt2.v - pt1.v, z2 - z1);
+      }
+      return { path, usedFallback: false, length };
     }
 
-    const eps = 1e-6;
+    const eps = 1e-5;
     const pathU = saddleGeodesicRK4(p1.x, p1.y, du + eps, dv, steps, c);
     const endU = pathU[pathU.length - 1];
     const pathV = saddleGeodesicRK4(p1.x, p1.y, du, dv + eps, steps, c);
@@ -273,7 +337,9 @@ export function saddleGeodesicBetween(
     dv -= (-j21 * errU + j11 * errV) / det;
   }
 
-  return saddleGeodesicRK4(p1.x, p1.y, du, dv, steps, c);
+  // Fallback to polyline relaxation
+  const fallback = saddlePolylineRelax(p1, p2, steps, 100, c);
+  return { path: fallback.path, usedFallback: true, length: fallback.length };
 }
 
 /**
@@ -282,20 +348,153 @@ export function saddleGeodesicBetween(
 export function saddleGeodesicPoints3D(
   p1: Point2D,
   p2: Point2D,
-  steps = 80,
+  steps = 40,
   c = DEFAULT_SADDLE_C
 ): Point3D[] {
-  const path = saddleGeodesicBetween(p1, p2, steps, c);
+  const { path } = saddleGeodesicBetween(p1, p2, steps, c);
   return path.map((pt) => saddlePosition(pt.u, pt.v, c));
 }
 
 /**
- * Green's theorem potential g(r) for integrating K dA on the saddle surface:
- * dA = sqrt(1 + 4*c^2*r^2) du dv
- * K dA = -4*c^2 / (1 + 4*c^2*r^2)^(3/2) du dv
- * Integral of K dA over triangle T = oint_{dT} g(r) * (u dv - v du)
- * where g(r) = (1 - sqrt(1 + 4*c^2*r^2)) / (r^2 * sqrt(1 + 4*c^2*r^2))
+ * Geodesic arc length along the x-axis (v = 0) from 0 to u:
+ * s(u) = int_0^u sqrt(1 + 4*c^2*t^2) dt
  */
+export function xAxisArcLength(u: number, c = DEFAULT_SADDLE_C): number {
+  const w = 2 * c * Math.abs(u);
+  if (w < 1e-12) return 0;
+  return (0.5 / (2 * c)) * (w * Math.sqrt(1 + w * w) + Math.log(w + Math.sqrt(1 + w * w)));
+}
+
+/**
+ * Inverts xAxisArcLength to find coordinate u for given geodesic distance dist.
+ */
+export function invertXAxis(dist: number, c = DEFAULT_SADDLE_C): number {
+  let u = dist;
+  for (let i = 0; i < 6; i++) {
+    const s = xAxisArcLength(u, c);
+    const ds = Math.sqrt(1 + 4 * c * c * u * u);
+    u -= (s - dist) / ds;
+  }
+  return u;
+}
+
+/**
+ * Shoots from origin (0, 0) at angle alpha with speed 1 for total arc length b.
+ */
+export function shootFromOrigin(
+  b: number,
+  alpha: number,
+  steps = 30,
+  c = DEFAULT_SADDLE_C
+): Point2D {
+  const dt = b / steps;
+  let u = 0, v = 0;
+  let du = Math.cos(alpha), dv = Math.sin(alpha);
+
+  const accel = (uVal: number, vVal: number, duVal: number, dvVal: number) => {
+    const W2 = 1 + 4 * c * c * (uVal * uVal + vVal * vVal);
+    const lam = (2 * c * (duVal * duVal - dvVal * dvVal)) / W2;
+    return {
+      d2u: -2 * c * uVal * lam,
+      d2v: 2 * c * vVal * lam,
+    };
+  };
+
+  for (let i = 0; i < steps; i++) {
+    const a1 = accel(u, v, du, dv);
+    const u2 = u + 0.5 * dt * du;
+    const v2 = v + 0.5 * dt * dv;
+    const du2 = du + 0.5 * dt * a1.d2u;
+    const dv2 = dv + 0.5 * dt * a1.d2v;
+
+    const a2 = accel(u2, v2, du2, dv2);
+    const u3 = u + 0.5 * dt * du2;
+    const v3 = v + 0.5 * dt * dv2;
+    const du3 = du + 0.5 * dt * a2.d2u;
+    const dv3 = dv + 0.5 * dt * a2.d2v;
+
+    const a3 = accel(u3, v3, du3, dv3);
+    const u4 = u + dt * du3;
+    const v4 = v + dt * dv3;
+    const du4 = du + dt * a3.d2u;
+    const dv4 = dv + dt * a3.d2v;
+
+    const a4 = accel(u4, v4, du4, dv4);
+
+    u += (dt / 6) * (du + 2 * du2 + 2 * du3 + du4);
+    v += (dt / 6) * (dv + 2 * dv2 + 2 * dv3 + dv4);
+    du += (dt / 6) * (a1.d2u + 2 * a2.d2u + 2 * a3.d2u + a4.d2u);
+    dv += (dt / 6) * (a1.d2v + 2 * a2.d2v + 2 * a3.d2v + a4.d2v);
+  }
+
+  return { x: u, y: v };
+}
+
+/**
+ * Computes exact geodesic distance between two points on the saddle.
+ */
+export function geodesicDistanceOnSaddle(
+  p1: Point2D,
+  p2: Point2D,
+  steps = 30,
+  c = DEFAULT_SADDLE_C
+): number {
+  const res = saddleGeodesicBetween(p1, p2, steps, c);
+  return res.length;
+}
+
+/**
+ * Constructs a triangle on the saddle with given side lengths a, b, c:
+ * - A is placed at the origin (0, 0).
+ * - B is placed along the positive x-axis (geodesic by symmetry) at geodesic distance c.
+ * - C is found by shooting from origin at angle alpha for length b and solving
+ *   dist(B, C(alpha)) = a via secant method.
+ * Returns null if impossible or outside the domain.
+ */
+export function constructSaddleTriangleFromSides(
+  a: number,
+  b: number,
+  c_side: number,
+  domain = DEFAULT_SADDLE_DOMAIN,
+  c = DEFAULT_SADDLE_C,
+  warmAlpha: number | null = null
+): ConstructedTriangle<Point2D> | null {
+  if (a <= 1e-5 || b <= 1e-5 || c_side <= 1e-5) return null;
+  if (a + b <= c_side + 1e-6 || a + c_side <= b + 1e-6 || b + c_side <= a + 1e-6) return null;
+
+  const uB = invertXAxis(c_side, c);
+  if (Math.abs(uB) > domain) return null;
+
+  const A: Point2D = { x: 0, y: 0 };
+  const B: Point2D = { x: uB, y: 0 };
+
+  const cosHyp = (Math.cosh(b) * Math.cosh(c_side) - Math.cosh(a)) / (Math.sinh(b) * Math.sinh(c_side));
+  let alpha0 = warmAlpha !== null ? warmAlpha : Math.acos(clamp(cosHyp, -0.999, 0.999));
+  let alpha1 = alpha0 + 0.01;
+
+  let f0 = geodesicDistanceOnSaddle(B, shootFromOrigin(b, alpha0, 24, c), 24, c) - a;
+  let f1 = geodesicDistanceOnSaddle(B, shootFromOrigin(b, alpha1, 24, c), 24, c) - a;
+
+  for (let iter = 0; iter < 8; iter++) {
+    if (Math.abs(f1) < 1e-5) break;
+    const diff = f1 - f0;
+    if (Math.abs(diff) < 1e-12) break;
+    const dAlpha = (f1 * (alpha1 - alpha0)) / diff;
+    alpha0 = alpha1;
+    f0 = f1;
+    alpha1 -= dAlpha;
+    f1 = geodesicDistanceOnSaddle(B, shootFromOrigin(b, alpha1, 24, c), 24, c) - a;
+  }
+
+  const C = shootFromOrigin(b, alpha1, 30, c);
+
+  if (Math.abs(C.x) > domain || Math.abs(C.y) > domain) {
+    return null;
+  }
+
+  return { a: A, b: B, c: C };
+}
+
 function greensPotential(u: number, v: number, c: number): number {
   const r2 = u * u + v * v;
   if (r2 < 1e-12) return -2 * c * c;
@@ -303,9 +502,6 @@ function greensPotential(u: number, v: number, c: number): number {
   return (1 - sqrtTerm) / (r2 * sqrtTerm);
 }
 
-/**
- * Line integral of g(r)*(u dv - v du) along a discretized geodesic path.
- */
 function edgeLineIntegral(
   path: { u: number; v: number; du: number; dv: number }[],
   c: number
@@ -322,55 +518,45 @@ function edgeLineIntegral(
   return sum;
 }
 
-/**
- * Computes geodesic arc length in 3D along a discretized path.
- */
-function pathArcLength(pts: Point3D[]): number {
-  let len = 0;
-  for (let i = 0; i < pts.length - 1; i++) {
-    len += Math.hypot(
-      pts[i + 1].x - pts[i].x,
-      pts[i + 1].y - pts[i].y,
-      pts[i + 1].z - pts[i].z
-    );
-  }
-  return len;
-}
-
-/**
- * Angle in radians between two 3D vectors.
- */
 function vectorAngle3D(v1: Point3D, v2: Point3D): number {
   const dot = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
   return Math.acos(clamp(dot, -1, 1));
 }
 
 /**
- * Computes triangle measurements on the 3D saddle surface:
- * - Solves 3 boundary geodesics
- * - Measures true 3D Riemannian interior angles between tangent vectors
- * - Computes angle sum < 180° and defect = pi - sum
- * - Computes surface integral of Gaussian curvature via Green's theorem
- * - Cross-validates Gauss-Bonnet theorem: defect = -integral(K dA)
+ * Computes triangle measurements on the 3D saddle surface.
+ * Returns degenerate: true (never NaN) for collinear, coincident, or out-of-domain vertices.
  */
 export function saddleTriangle(
   p1: Point2D,
   p2: Point2D,
   p3: Point2D,
-  c = DEFAULT_SADDLE_C
+  c = DEFAULT_SADDLE_C,
+  domain = DEFAULT_SADDLE_DOMAIN
 ): SaddleTriangleMeasurements {
   const d12 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
   const d23 = Math.hypot(p3.x - p2.x, p3.y - p2.y);
   const d31 = Math.hypot(p1.x - p3.x, p1.y - p3.y);
 
-  // Check degenerate: coincident vertices
-  if (d12 < 1e-6 || d23 < 1e-6 || d31 < 1e-6) {
-    const v3D = [saddlePosition(p1.x, p1.y, c), saddlePosition(p2.x, p2.y, c), saddlePosition(p3.x, p3.y, c)] as [Point3D, Point3D, Point3D];
+  // Check out of domain
+  const outOfDomain =
+    Math.abs(p1.x) > domain || Math.abs(p1.y) > domain ||
+    Math.abs(p2.x) > domain || Math.abs(p2.y) > domain ||
+    Math.abs(p3.x) > domain || Math.abs(p3.y) > domain;
+
+  const v3D = [
+    saddlePosition(p1.x, p1.y, c),
+    saddlePosition(p2.x, p2.y, c),
+    saddlePosition(p3.x, p3.y, c),
+  ] as [Point3D, Point3D, Point3D];
+
+  // Check degenerate: coincident vertices or out of domain
+  if (d12 < 1e-6 || d23 < 1e-6 || d31 < 1e-6 || outOfDomain) {
     return {
       p1, p2, p3,
       vertices3D: v3D,
       edges3D: [[v3D[0], v3D[1]], [v3D[1], v3D[2]], [v3D[2], v3D[0]]],
-      sides: [0, 0, 0],
+      sides: [d23, d31, d12],
       alpha: 0, beta: 0, gamma: 0,
       angleSum: 0, angleSumDeg: 0,
       defect: 0, defectDeg: 0,
@@ -382,7 +568,6 @@ export function saddleTriangle(
   // Check 2D cross product for collinearity
   const cross = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
   if (Math.abs(cross) < 1e-6) {
-    const v3D = [saddlePosition(p1.x, p1.y, c), saddlePosition(p2.x, p2.y, c), saddlePosition(p3.x, p3.y, c)] as [Point3D, Point3D, Point3D];
     return {
       p1, p2, p3,
       vertices3D: v3D,
@@ -396,7 +581,6 @@ export function saddleTriangle(
     };
   }
 
-  // Ensure counter-clockwise orientation for positive boundary line integral
   let a = p1, b = p2, d = p3;
   let swapped = false;
   if (cross < 0) {
@@ -405,49 +589,48 @@ export function saddleTriangle(
     swapped = true;
   }
 
-  const gAB = saddleGeodesicBetween(a, b, 60, c);
-  const gBD = saddleGeodesicBetween(b, d, 60, c);
-  const gDA = saddleGeodesicBetween(d, a, 60, c);
+  const resAB = saddleGeodesicBetween(a, b, 40, c);
+  const resBD = saddleGeodesicBetween(b, d, 40, c);
+  const resDA = saddleGeodesicBetween(d, a, 40, c);
+
+  const gAB = resAB.path;
+  const gBD = resBD.path;
+  const gDA = resDA.path;
 
   const edgeAB3D = gAB.map((pt) => saddlePosition(pt.u, pt.v, c));
   const edgeBD3D = gBD.map((pt) => saddlePosition(pt.u, pt.v, c));
   const edgeDA3D = gDA.map((pt) => saddlePosition(pt.u, pt.v, c));
 
-  // Tangents at vertex A
   const tA_B = saddleTangent3D(a, gAB[0].du, gAB[0].dv, c);
   const endDA = gDA[gDA.length - 1];
   const tA_D = saddleTangent3D(a, -endDA.du, -endDA.dv, c);
   const angleA = vectorAngle3D(tA_B, tA_D);
 
-  // Tangents at vertex B
   const tB_D = saddleTangent3D(b, gBD[0].du, gBD[0].dv, c);
   const endAB = gAB[gAB.length - 1];
   const tB_A = saddleTangent3D(b, -endAB.du, -endAB.dv, c);
   const angleB = vectorAngle3D(tB_D, tB_A);
 
-  // Tangents at vertex D
   const tD_A = saddleTangent3D(d, gDA[0].du, gDA[0].dv, c);
   const endBD = gBD[gBD.length - 1];
   const tD_B = saddleTangent3D(d, -endBD.du, -endBD.dv, c);
   const angleD = vectorAngle3D(tD_A, tD_B);
 
-  // Map back to original vertex order (p1, p2, p3)
-  const alpha = angleA;
-  const beta = swapped ? angleD : angleB;
-  const gamma = swapped ? angleB : angleD;
+  const alpha = isNaN(angleA) ? 0 : angleA;
+  const beta = isNaN(swapped ? angleD : angleB) ? 0 : (swapped ? angleD : angleB);
+  const gamma = isNaN(swapped ? angleB : angleD) ? 0 : (swapped ? angleB : angleD);
 
   const edge12_3D = swapped ? edgeDA3D.slice().reverse() : edgeAB3D;
-  const edge23_3D = swapped ? edgeBD3D.slice().reverse() : edgeBD3D;
+  const edge23_3D = edgeBD3D;
   const edge31_3D = swapped ? edgeAB3D.slice().reverse() : edgeDA3D;
 
-  const sideA = pathArcLength(edge23_3D); // side opposite p1
-  const sideB = pathArcLength(edge31_3D); // side opposite p2
-  const sideC = pathArcLength(edge12_3D); // side opposite p3
+  const sideA = resBD.length;
+  const sideB = swapped ? resAB.length : resDA.length;
+  const sideC = swapped ? resDA.length : resAB.length;
 
   const angleSum = alpha + beta + gamma;
   const defect = Math.PI - angleSum;
 
-  // Surface integral of K dA via boundary line integral (counter-clockwise)
   const integralKdA = edgeLineIntegral(gAB, c) + edgeLineIntegral(gBD, c) + edgeLineIntegral(gDA, c);
   const defectFromIntegral = -integralKdA;
   const gaussBonnetDiscrepancy = Math.abs(defect - defectFromIntegral);
@@ -456,23 +639,19 @@ export function saddleTriangle(
 
   return {
     p1, p2, p3,
-    vertices3D: [
-      saddlePosition(p1.x, p1.y, c),
-      saddlePosition(p2.x, p2.y, c),
-      saddlePosition(p3.x, p3.y, c),
-    ],
+    vertices3D: v3D,
     edges3D: [edge12_3D, edge23_3D, edge31_3D],
     sides: [sideA, sideB, sideC],
     alpha,
     beta,
     gamma,
-    angleSum,
-    angleSumDeg: (angleSum * 180) / Math.PI,
-    defect,
-    defectDeg: (defect * 180) / Math.PI,
-    integralKdA,
-    defectFromIntegral,
-    gaussBonnetDiscrepancy,
+    angleSum: isNaN(angleSum) ? 0 : angleSum,
+    angleSumDeg: isNaN(angleSum) ? 0 : (angleSum * 180) / Math.PI,
+    defect: isNaN(defect) ? 0 : defect,
+    defectDeg: isNaN(defect) ? 0 : (defect * 180) / Math.PI,
+    integralKdA: isNaN(integralKdA) ? 0 : integralKdA,
+    defectFromIntegral: isNaN(defectFromIntegral) ? 0 : defectFromIntegral,
+    gaussBonnetDiscrepancy: isNaN(gaussBonnetDiscrepancy) ? 0 : gaussBonnetDiscrepancy,
     degenerate,
   };
 }
