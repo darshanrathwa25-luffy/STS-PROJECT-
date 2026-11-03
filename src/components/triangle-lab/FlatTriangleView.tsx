@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useMemo } from 'react';
 import { useGeometryStore } from '../../store/geometryStore';
 import { euclideanTriangle, Point2D } from '../../geometry-engine';
+import { palette, worldColor } from '../../theme/palette';
 
 export const FlatTriangleView: React.FC = () => {
   const {
@@ -94,16 +95,21 @@ export const FlatTriangleView: React.FC = () => {
     const endX = vertex.x + radius * Math.cos(a1 + (sweep ? sweepAngle : -sweepAngle));
     const endY = -vertex.y + radius * Math.sin(a1 + (sweep ? sweepAngle : -sweepAngle));
 
-    const arcPath = `M ${vertex.x} ${-vertex.y} L ${startX} ${startY} A ${radius} ${radius} 0 0 ${sweep} ${endX} ${endY} Z`;
+    const arcPath = `M ${startX} ${startY} A ${radius} ${radius} 0 0 ${sweep} ${endX} ${endY}`;
 
-    // Midpoint for text label
-    const midAngle = a1 + (sweep ? sweepAngle * 0.5 : -sweepAngle * 0.5);
-    const textRadius = radius + 0.22;
-    const textX = vertex.x + textRadius * Math.cos(midAngle);
-    const textY = -vertex.y + textRadius * Math.sin(midAngle);
-
-    return { arcPath, textX, textY };
+    return { arcPath };
   };
+
+  // Labels sit outside the triangle: push each one away from the centroid (SVG space, y down)
+  const centroid = { x: (p1.x + p2.x + p3.x) / 3, y: -(p1.y + p2.y + p3.y) / 3 };
+  const awayFromCentroid = (x: number, y: number, dist: number) => {
+    const dx = x - centroid.x;
+    const dy = y - centroid.y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: x + (dx / len) * dist, y: y + (dy / len) * dist };
+  };
+  const vertexLabel = (pt: Point2D) => awayFromCentroid(pt.x, -pt.y, 0.36);
+  const sideLabel = (a: Point2D, b: Point2D) => awayFromCentroid((a.x + b.x) / 2, -(a.y + b.y) / 2, 0.2);
 
   const arcA = createAngleArc(p1, p2, p3);
   const arcB = createAngleArc(p2, p3, p1);
@@ -120,8 +126,8 @@ export const FlatTriangleView: React.FC = () => {
           y1={-2.4}
           x2={x}
           y2={2.4}
-          stroke={Math.abs(x) < 1e-4 ? '#292C35' : '#141720'}
-          strokeWidth={Math.abs(x) < 1e-4 ? 0.02 : 0.008}
+          stroke={palette.rule}
+          strokeWidth={Math.abs(x) < 1e-4 ? 0.012 : 0.006}
         />
       );
     }
@@ -133,8 +139,8 @@ export const FlatTriangleView: React.FC = () => {
           y1={y}
           x2={2.8}
           y2={y}
-          stroke={Math.abs(y) < 1e-4 ? '#292C35' : '#141720'}
-          strokeWidth={Math.abs(y) < 1e-4 ? 0.02 : 0.008}
+          stroke={palette.rule}
+          strokeWidth={Math.abs(y) < 1e-4 ? 0.012 : 0.006}
         />
       );
     }
@@ -143,7 +149,7 @@ export const FlatTriangleView: React.FC = () => {
 
   return (
     <div
-      className="relative w-full h-full bg-[#090A0D] flex items-center justify-center overflow-hidden select-none"
+      className="relative w-full h-full bg-paper flex items-center justify-center overflow-hidden select-none"
       style={{ touchAction: 'none' }}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -153,156 +159,86 @@ export const FlatTriangleView: React.FC = () => {
         ref={svgRef}
         viewBox="-3.2 -2.4 6.4 4.8"
         preserveAspectRatio="xMidYMid meet"
-        className="w-full h-full cursor-crosshair"
+        className="w-full h-full"
       >
         {/* Subtle Background Grid */}
         <g id="grid">{gridLines}</g>
 
-        {/* Triangle Shaded Interior */}
+        {/* Triangle body: a flat block of the world colour, edged in ink */}
         <polygon
           points={`${p1.x},${-p1.y} ${p2.x},${-p2.y} ${p3.x},${-p3.y}`}
-          fill="#69A3FF"
-          fillOpacity="0.14"
-          stroke="#69A3FF"
-          strokeWidth="0.035"
+          fill={worldColor.flat}
+          fillOpacity="0.88"
+          stroke={palette.ink}
+          strokeWidth="0.028"
           strokeLinejoin="round"
         />
 
-        {/* Interior Angle Arcs */}
-        <path d={arcA.arcPath} fill="#69A3FF" fillOpacity="0.25" stroke="#69A3FF" strokeWidth="0.015" />
-        <path d={arcB.arcPath} fill="#69A3FF" fillOpacity="0.25" stroke="#69A3FF" strokeWidth="0.015" />
-        <path d={arcC.arcPath} fill="#69A3FF" fillOpacity="0.25" stroke="#69A3FF" strokeWidth="0.015" />
+        {/* Angle arcs */}
+        {[arcA, arcB, arcC].map((arc, i) => (
+          <path key={i} d={arc.arcPath} fill="none" stroke={palette.paperRaised} strokeWidth="0.018" />
+        ))}
 
-        {/* Degree Angle Labels */}
-        <text
-          x={arcA.textX}
-          y={arcA.textY}
-          fill="#E8EAF0"
-          fontSize="0.15"
-          fontFamily="JetBrains Mono, monospace"
-          fontWeight="600"
-          textAnchor="middle"
-          dominantBaseline="central"
-          className="pointer-events-none drop-shadow"
-        >
-          {((tri.alpha * 180) / Math.PI).toFixed(1)}°
-        </text>
-
-        <text
-          x={arcB.textX}
-          y={arcB.textY}
-          fill="#E8EAF0"
-          fontSize="0.15"
-          fontFamily="JetBrains Mono, monospace"
-          fontWeight="600"
-          textAnchor="middle"
-          dominantBaseline="central"
-          className="pointer-events-none drop-shadow"
-        >
-          {((tri.beta * 180) / Math.PI).toFixed(1)}°
-        </text>
-
-        <text
-          x={arcC.textX}
-          y={arcC.textY}
-          fill="#E8EAF0"
-          fontSize="0.15"
-          fontFamily="JetBrains Mono, monospace"
-          fontWeight="600"
-          textAnchor="middle"
-          dominantBaseline="central"
-          className="pointer-events-none drop-shadow"
-        >
-          {((tri.gamma * 180) / Math.PI).toFixed(1)}°
-        </text>
-
-        {/* Edge Midpoint Side Labels */}
-        <text
-          x={(p2.x + p3.x) / 2}
-          y={-(p2.y + p3.y) / 2 - 0.08}
-          fill="#858B9A"
-          fontSize="0.12"
-          fontFamily="JetBrains Mono, monospace"
-          textAnchor="middle"
-          className="pointer-events-none"
-        >
-          a={tri.a.toFixed(2)}
-        </text>
-        <text
-          x={(p1.x + p3.x) / 2 - 0.12}
-          y={-(p1.y + p3.y) / 2}
-          fill="#858B9A"
-          fontSize="0.12"
-          fontFamily="JetBrains Mono, monospace"
-          textAnchor="middle"
-          className="pointer-events-none"
-        >
-          b={tri.b.toFixed(2)}
-        </text>
-        <text
-          x={(p1.x + p2.x) / 2}
-          y={-(p1.y + p2.y) / 2 + 0.16}
-          fill="#858B9A"
-          fontSize="0.12"
-          fontFamily="JetBrains Mono, monospace"
-          textAnchor="middle"
-          className="pointer-events-none"
-        >
-          c={tri.c.toFixed(2)}
-        </text>
-
-        {/* Draggable Vertex Handles (Min 24px Desktop, 44px Touch) */}
+        {/* Side lengths, outside each edge */}
         {[
-          { key: 'p1' as const, pt: p1, label: 'A' },
-          { key: 'p2' as const, pt: p2, label: 'B' },
-          { key: 'p3' as const, pt: p3, label: 'C' },
-        ].map(({ key, pt, label }) => {
+          { name: 'a', value: tri.a, pos: sideLabel(p2, p3) },
+          { name: 'b', value: tri.b, pos: sideLabel(p1, p3) },
+          { name: 'c', value: tri.c, pos: sideLabel(p1, p2) },
+        ].map(({ name, value, pos }) => (
+          <text
+            key={name}
+            x={pos.x}
+            y={pos.y}
+            fill={palette.inkMuted}
+            fontSize="0.13"
+            fontFamily="'IBM Plex Mono', monospace"
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="pointer-events-none"
+          >
+            <tspan fontFamily="'Newsreader Variable', Georgia, serif" fontStyle="italic" fontSize="0.15">{name}</tspan>
+            {` ${value.toFixed(2)}`}
+          </text>
+        ))}
+
+        {/* Draggable corners with their angle */}
+        {[
+          { key: 'p1' as const, pt: p1, label: 'A', angle: tri.alpha },
+          { key: 'p2' as const, pt: p2, label: 'B', angle: tri.beta },
+          { key: 'p3' as const, pt: p3, label: 'C', angle: tri.gamma },
+        ].map(({ key, pt, label, angle }) => {
           const isSelected = selectedVertex === key;
           const isDraggingThis = activeDrag === key;
+          const lp = vertexLabel(pt);
 
           return (
-            <g
-              key={key}
-              transform={`translate(${pt.x}, ${-pt.y})`}
-              className="cursor-grab active:cursor-grabbing transition-transform"
-              onPointerDown={(e) => handlePointerDown(key, e)}
-            >
-              {/* Invisible Large Touch Target (44px equivalent) */}
-              <circle r="0.3" fill="transparent" />
-
-              {/* Pulsing selection aura */}
-              {isSelected && (
-                <circle
-                  r="0.18"
-                  fill="none"
-                  stroke="#69A3FF"
-                  strokeWidth="0.02"
-                  strokeDasharray="0.04 0.02"
-                  opacity="0.8"
-                />
-              )}
-
-              {/* Visible Handle */}
-              <circle
-                r={isDraggingThis ? '0.12' : '0.10'}
-                fill={isSelected ? '#69A3FF' : '#181B22'}
-                stroke={isSelected ? '#FFFFFF' : '#69A3FF'}
-                strokeWidth="0.025"
-                className="transition-all duration-100"
-              />
-
-              {/* Vertex Label */}
+            <g key={key}>
               <text
-                y="-0.16"
-                fill={isSelected ? '#69A3FF' : '#E8EAF0'}
-                fontSize="0.14"
-                fontFamily="JetBrains Mono, monospace"
-                fontWeight="bold"
+                x={lp.x}
+                y={lp.y}
+                fill={palette.ink}
                 textAnchor="middle"
-                className="pointer-events-none select-none drop-shadow"
+                dominantBaseline="central"
+                className="pointer-events-none select-none"
               >
-                {label}
+                <tspan fontFamily="'Newsreader Variable', Georgia, serif" fontStyle="italic" fontSize="0.2">{label}</tspan>
+                <tspan fontFamily="'IBM Plex Mono', monospace" fontSize="0.13" dx="0.06">
+                  {((angle * 180) / Math.PI).toFixed(1)}°
+                </tspan>
               </text>
+
+              <g
+                transform={`translate(${pt.x}, ${-pt.y})`}
+                className="cursor-grab active:cursor-grabbing"
+                onPointerDown={(e) => handlePointerDown(key, e)}
+              >
+                {/* Invisible touch target (about 44px) */}
+                <circle r="0.3" fill="transparent" />
+                {isSelected && (
+                  <circle r="0.15" fill={palette.paperRaised} fillOpacity="0.6" stroke={palette.ink} strokeWidth="0.014" />
+                )}
+                <circle r={isDraggingThis ? 0.085 : 0.07} fill={palette.ink} />
+              </g>
             </g>
           );
         })}

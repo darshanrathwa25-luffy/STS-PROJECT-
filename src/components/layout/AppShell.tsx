@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGeometryStore } from '../../store/geometryStore';
 import { TopBar, QuestionCard, DetailsDrawer, LandingScreen } from '../shell';
-import { TriangleLabStage } from '../triangle-lab';
+import { TriangleLabStage, TriangleHUD } from '../triangle-lab';
 import { GeometryCanvas } from '../geometry/GeometryCanvas';
 
 export const AppShell: React.FC = () => {
@@ -12,14 +12,21 @@ export const AppShell: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#090A0D] text-[#E8EAF0]">
-      {/* Top Bar Navigation */}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-paper text-ink">
       <TopBar />
 
-      {/* Full-bleed Interactive Stage */}
-      <main className="flex-1 relative h-full overflow-hidden">
-        {lab === 'triangle' ? <TriangleLabStage /> : <GeometryCanvas />}
-        <QuestionCard />
+      <main className="relative flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
+        {/* Figure */}
+        <section className="relative flex-1 min-h-[56vh] lg:min-h-0">
+          {lab === 'triangle' ? <TriangleLabStage /> : <GeometryCanvas />}
+        </section>
+
+        {/* Margin column: readout and the question for this world */}
+        <aside className="shrink-0 lg:w-[360px] xl:w-[380px] border-t lg:border-t-0 lg:border-l border-rule bg-paper-raised lg:overflow-y-auto">
+          {lab === 'triangle' && <TriangleHUD />}
+          <QuestionCard />
+        </aside>
+
         <DetailsDrawer />
       </main>
     </div>

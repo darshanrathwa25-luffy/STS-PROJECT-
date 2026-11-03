@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { useThree, ThreeEvent } from '@react-three/fiber';
-import { Line, Html } from '@react-three/drei';
+import { Line } from '@react-three/drei';
 import { useGeometryStore } from '../../store/geometryStore';
 import {
   saddleTriangle,
@@ -11,6 +11,8 @@ import {
   DEFAULT_SADDLE_DOMAIN,
 } from '../../geometry-engine';
 import type { Point3D } from '../../geometry-engine';
+import { palette, worldColor } from '../../theme/palette';
+import { VertexHandle, outwardOffset } from './VertexHandle';
 
 // The engine returns saddle points as {x: u, y: v, z: height}. The scene is
 // y-up (camera, drag plane, labels), so map height -> y and v -> z.
@@ -187,9 +189,11 @@ export const SaddleTriangleScene: React.FC = () => {
       {/* Saddle Surface Mesh */}
       <mesh geometry={saddleMeshGeo} receiveShadow>
         <meshStandardMaterial
-          color="#0E1724"
-          roughness={0.7}
-          metalness={0.15}
+          color={palette.paperRaised}
+          emissive={palette.paperSunk}
+          emissiveIntensity={0.45}
+          roughness={1}
+          metalness={0}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -197,72 +201,53 @@ export const SaddleTriangleScene: React.FC = () => {
       {/* Surface Wireframe Overlay for Curvature Grids */}
       <mesh geometry={saddleMeshGeo}>
         <meshBasicMaterial
-          color="#1E2A3A"
+          color={palette.ruleStrong}
           wireframe
           transparent
-          opacity={0.3}
+          opacity={0.45}
         />
       </mesh>
 
       {/* Subdivided Filled Triangle Patch */}
       <mesh geometry={patchGeometry}>
         <meshBasicMaterial
-          color="#06D6A0"
+          color={worldColor.hyperbolic}
           transparent
-          opacity={0.22}
+          opacity={0.9}
           side={THREE.DoubleSide}
           depthWrite={false}
         />
       </mesh>
 
       {/* True Geodesic Edges on the Saddle */}
-      <Line points={edgeAB_pts} color="#06D6A0" lineWidth={2.8} />
-      <Line points={edgeBC_pts} color="#06D6A0" lineWidth={2.8} />
-      <Line points={edgeCA_pts} color="#06D6A0" lineWidth={2.8} />
+      <Line points={edgeAB_pts} color={palette.ink} lineWidth={2.2} />
+      <Line points={edgeBC_pts} color={palette.ink} lineWidth={2.2} />
+      <Line points={edgeCA_pts} color={palette.ink} lineWidth={2.2} />
 
       {/* Vertex Handles & Angle Labels */}
-      {[
-        { key: 'p1' as const, pos: p1_3D, label: 'A', angleDeg: (tri.alpha * 180) / Math.PI },
-        { key: 'p2' as const, pos: p2_3D, label: 'B', angleDeg: (tri.beta * 180) / Math.PI },
-        { key: 'p3' as const, pos: p3_3D, label: 'C', angleDeg: (tri.gamma * 180) / Math.PI },
-      ].map(({ key, pos, label, angleDeg }) => {
-        const isSelected = selectedVertex === key;
-        const isDraggingThis = activeDrag === key;
-
-        const [hx, hy, hz] = toScene(pos);
-        return (
-          <group key={key} position={[hx, hy + 0.02, hz]}>
-            {/* Visual Handle Sphere */}
-            <mesh
-              onPointerDown={(e) => handlePointerDown(key, e)}
-              scale={isDraggingThis ? 1.3 : 1.0}
-            >
-              <sphereGeometry args={[0.08, 16, 16]} />
-              <meshBasicMaterial color={isSelected ? '#FFFFFF' : '#06D6A0'} />
-            </mesh>
-
-            {/* Selection Aura */}
-            {isSelected && (
-              <mesh scale={1.5}>
-                <sphereGeometry args={[0.08, 16, 16]} />
-                <meshBasicMaterial color="#06D6A0" transparent opacity={0.35} wireframe />
-              </mesh>
-            )}
-
-            {/* Degree Label */}
-            <Html
-              position={[0, 0.16, 0]}
-              center
-              distanceFactor={10}
-              className="pointer-events-none select-none"
-            >
-              <div className="bg-[#12141A]/90 backdrop-blur-md px-1.5 py-0.5 rounded border border-[#06D6A0]/40 text-[10px] font-mono font-bold text-[#06D6A0] whitespace-nowrap shadow-md">
-                {label}: {angleDeg.toFixed(1)}°
-              </div>
-            </Html>
-          </group>
-        );
-      })}
+      {(() => {
+        const handles = [
+          { key: 'p1' as const, pos: toScene(p1_3D), label: 'A', angleDeg: (tri.alpha * 180) / Math.PI },
+          { key: 'p2' as const, pos: toScene(p2_3D), label: 'B', angleDeg: (tri.beta * 180) / Math.PI },
+          { key: 'p3' as const, pos: toScene(p3_3D), label: 'C', angleDeg: (tri.gamma * 180) / Math.PI },
+        ];
+        const centroid = handles
+          .reduce((acc, h) => [acc[0] + h.pos[0], acc[1] + h.pos[1], acc[2] + h.pos[2]], [0, 0, 0])
+          .map((v) => v / 3) as [number, number, number];
+        return handles.map(({ key, pos, label, angleDeg }) => (
+          <VertexHandle
+            key={key}
+            position={[pos[0], pos[1] + 0.02, pos[2]]}
+            labelOffset={outwardOffset(pos, centroid, 0.38, 0.12)}
+            label={label}
+            angleDeg={angleDeg}
+            selected={selectedVertex === key}
+            dragging={activeDrag === key}
+            color={worldColor.hyperbolic}
+            onPointerDown={(e) => handlePointerDown(key, e)}
+          />
+        ));
+      })()}
     </group>
   );
 };

@@ -7,6 +7,7 @@ import {
   intersectEuclideanLines,
   degToRad,
 } from '../geometry-engine';
+import { palette } from '../theme/palette';
 
 export const EuclideanScene: React.FC = () => {
   const {
@@ -197,19 +198,19 @@ export const EuclideanScene: React.FC = () => {
                 itemSize={3}
               />
             </bufferGeometry>
-            <lineBasicMaterial color="#E0E4EC" linewidth={2} />
+            <lineBasicMaterial color={palette.ink} linewidth={2} />
           </line>
 
           {/* External Point P */}
           <mesh position={parallelData.p3D}>
             <sphereGeometry args={[0.12, 16, 16]} />
-            <meshBasicMaterial color="#69A3FF" />
+            <meshBasicMaterial color={palette.blue} />
           </mesh>
 
           {/* Point P subtle ring */}
           <mesh position={[parallelData.p3D.x, parallelData.p3D.y, parallelData.p3D.z]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[0.2, 0.25, 24]} />
-            <meshBasicMaterial color="#69A3FF" transparent opacity={0.6} />
+            <meshBasicMaterial color={palette.blue} transparent opacity={0.6} />
           </mesh>
 
           {/* Fan candidate lines */}
@@ -223,7 +224,7 @@ export const EuclideanScene: React.FC = () => {
                   itemSize={3}
                 />
               </bufferGeometry>
-              <lineBasicMaterial color="#4A5568" transparent opacity={0.35} />
+              <lineBasicMaterial color={palette.ruleStrong} transparent opacity={0.35} />
             </line>
           ))}
 
@@ -238,7 +239,7 @@ export const EuclideanScene: React.FC = () => {
               />
             </bufferGeometry>
             <lineBasicMaterial
-              color={parallelData.isParallel ? '#06D6A0' : '#EF476F'}
+              color={parallelData.isParallel ? palette.ochre : palette.red}
               linewidth={2}
             />
           </line>
@@ -247,7 +248,7 @@ export const EuclideanScene: React.FC = () => {
           {parallelData.intPt3D && (
             <mesh position={parallelData.intPt3D}>
               <sphereGeometry args={[0.1, 16, 16]} />
-              <meshBasicMaterial color="#EF476F" />
+              <meshBasicMaterial color={palette.red} />
             </mesh>
           )}
         </group>
@@ -265,7 +266,7 @@ export const EuclideanScene: React.FC = () => {
                 itemSize={3}
               />
             </bufferGeometry>
-            <lineBasicMaterial color="#69A3FF" linewidth={2} />
+            <lineBasicMaterial color={palette.blue} linewidth={2} />
           </line>
         </group>
       )}
@@ -282,12 +283,12 @@ export const EuclideanScene: React.FC = () => {
               }}
             >
               <sphereGeometry args={[0.12, 16, 16]} />
-              <meshBasicMaterial color={isSelected ? '#69A3FF' : '#E0E4EC'} />
+              <meshBasicMaterial color={isSelected ? palette.blue : palette.ink} />
             </mesh>
             {isSelected && (
               <mesh rotation={[-Math.PI / 2, 0, 0]}>
                 <ringGeometry args={[0.2, 0.25, 24]} />
-                <meshBasicMaterial color="#69A3FF" transparent opacity={0.8} />
+                <meshBasicMaterial color={palette.blue} transparent opacity={0.8} />
               </mesh>
             )}
           </group>

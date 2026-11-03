@@ -8,7 +8,16 @@ import {
   constructSaddleTriangleFromSides,
   DEFAULT_SPHERE_RADIUS,
 } from '../../geometry-engine';
-import { Sparkles, ArrowRight, CornerDownRight } from 'lucide-react';
+import { palette, worldColor, worldInk } from '../../theme/palette';
+
+const WORLD_META: Record<WorldKind, { label: string; curvature: string }> = {
+  flat: { label: 'Flat plane', curvature: 'K = 0' },
+  sphere: { label: 'Sphere', curvature: 'K > 0' },
+  hyperbolic: { label: 'Saddle', curvature: 'K < 0' },
+};
+
+// The angle bar spans 0°–270°, so 180° sits two-thirds of the way along.
+const BAR_MAX = 270;
 
 export const TriangleHUD: React.FC = () => {
   const {
@@ -22,43 +31,20 @@ export const TriangleHUD: React.FC = () => {
 
   // Active world measurements
   const activeMeasurements = useMemo(() => {
-    if (world === 'flat') {
-      const tri = euclideanTriangle(flatTriangle.p1, flatTriangle.p2, flatTriangle.p3);
-      return {
-        sum: tri.angleSumDeg,
-        angles: [
-          (tri.alpha * 180) / Math.PI,
-          (tri.beta * 180) / Math.PI,
-          (tri.gamma * 180) / Math.PI,
-        ],
-        defectOrExcess: tri.angleSumDeg - 180,
-      };
-    } else if (world === 'sphere') {
-      const tri = sphericalTriangle(sphereTriangle.p1, sphereTriangle.p2, sphereTriangle.p3, DEFAULT_SPHERE_RADIUS);
-      return {
-        sum: tri.angleSumDeg,
-        angles: [
-          (tri.alpha * 180) / Math.PI,
-          (tri.beta * 180) / Math.PI,
-          (tri.gamma * 180) / Math.PI,
-        ],
-        defectOrExcess: tri.angleSumDeg - 180,
-      };
-    } else {
-      const tri = saddleTriangle(hTri.p1, hTri.p2, hTri.p3);
-      return {
-        sum: tri.angleSumDeg,
-        angles: [
-          (tri.alpha * 180) / Math.PI,
-          (tri.beta * 180) / Math.PI,
-          (tri.gamma * 180) / Math.PI,
-        ],
-        defectOrExcess: tri.angleSumDeg - 180,
-      };
-    }
+    const tri =
+      world === 'flat'
+        ? euclideanTriangle(flatTriangle.p1, flatTriangle.p2, flatTriangle.p3)
+        : world === 'sphere'
+        ? sphericalTriangle(sphereTriangle.p1, sphereTriangle.p2, sphereTriangle.p3, DEFAULT_SPHERE_RADIUS)
+        : saddleTriangle(hTri.p1, hTri.p2, hTri.p3);
+    return {
+      sum: tri.angleSumDeg,
+      angles: [tri.alpha, tri.beta, tri.gamma].map((r) => (r * 180) / Math.PI),
+      defectOrExcess: tri.angleSumDeg - 180,
+    };
   }, [world, flatTriangle, sphereTriangle, hTri]);
 
-  // Smooth lerp for angle sum display (300ms feel)
+  // Ease the big number towards its target so drags read as motion, not flicker
   const [displaySum, setDisplaySum] = useState<number>(activeMeasurements.sum);
 
   useEffect(() => {
@@ -69,12 +55,9 @@ export const TriangleHUD: React.FC = () => {
     const duration = 240;
 
     const tick = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(1, elapsed / duration);
-      // Ease out cubic
+      const progress = Math.min(1, (now - startTime) / duration);
       const ease = 1 - Math.pow(1 - progress, 3);
       setDisplaySum(startVal + (targetVal - startVal) * ease);
-
       if (progress < 1) {
         animId = requestAnimationFrame(tick);
       }
@@ -84,15 +67,11 @@ export const TriangleHUD: React.FC = () => {
     return () => cancelAnimationFrame(animId);
   }, [activeMeasurements.sum]);
 
-  // Three-Worlds Strip: evaluate current side lengths in all three worlds
+  // Same side lengths evaluated in each world
   const stripData = useMemo(() => {
     const { a, b, c } = sides;
 
-    // 1. Flat: always exactly 180°
-    const flatSum = '180.0°';
-
-    // 2. Sphere: construct triangle on sphere
-    let sphereSum = 'N/A';
+    let sphereSum: number | null = null;
     const sTriConstructed = constructTriangleFromSides('spherical', a, b, c, DEFAULT_SPHERE_RADIUS);
     if (sTriConstructed) {
       const m = sphericalTriangle(
@@ -101,13 +80,10 @@ export const TriangleHUD: React.FC = () => {
         sTriConstructed.c as any,
         DEFAULT_SPHERE_RADIUS
       );
-      if (!m.degenerate) {
-        sphereSum = `${m.angleSumDeg.toFixed(1)}°`;
-      }
+      if (!m.degenerate) sphereSum = m.angleSumDeg;
     }
 
-    // 3. Hyperbolic (Saddle): construct triangle on saddle
-    let hypSum = 'N/A';
+    let hypSum: number | null = null;
     const hTriConstructed = constructSaddleTriangleFromSides(
       Math.min(a, 1.5),
       Math.min(b, 1.5),
@@ -115,122 +91,136 @@ export const TriangleHUD: React.FC = () => {
     );
     if (hTriConstructed) {
       const m = saddleTriangle(hTriConstructed.a, hTriConstructed.b, hTriConstructed.c);
-      if (!m.degenerate) {
-        hypSum = `${m.angleSumDeg.toFixed(1)}°`;
-      }
+      if (!m.degenerate) hypSum = m.angleSumDeg;
     }
 
     return [
-      { id: 'flat' as WorldKind, label: 'Flat', sum: flatSum, sub: 'K = 0' },
-      { id: 'sphere' as WorldKind, label: 'Sphere', sum: sphereSum, sub: 'K > 0' },
-      { id: 'hyperbolic' as WorldKind, label: 'Hyperbolic', sum: hypSum, sub: 'K < 0' },
+      { id: 'flat' as WorldKind, sum: 180 as number | null },
+      { id: 'sphere' as WorldKind, sum: sphereSum },
+      { id: 'hyperbolic' as WorldKind, sum: hypSum },
     ];
   }, [sides]);
 
-  const isFlat = Math.abs(activeMeasurements.sum - 180) < 0.05;
-  const isGreater = activeMeasurements.sum > 180 + 0.05;
+  const delta = activeMeasurements.defectOrExcess;
+  const isFlat = Math.abs(delta) < 0.05;
+  const isGreater = delta > 0.05;
+  const meta = WORLD_META[world];
+
+  const pct = (deg: number) => `${(Math.min(deg, BAR_MAX) / BAR_MAX) * 100}%`;
+  const angleShades = [palette.inkSoft, palette.inkMuted, palette.inkFaint];
 
   return (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 select-none pointer-events-none w-full max-w-xl px-4">
-      {/* Primary Angle Sum HUD Card */}
-      <div className="bg-[#12141A]/95 backdrop-blur-md border border-[#292C35] rounded-2xl p-3 shadow-panel flex flex-col items-center pointer-events-auto transition-all duration-200">
-        <div className="flex items-center gap-3">
-          {/* Main Sum Display */}
-          <div className="flex items-baseline gap-1.5 font-mono">
-            <span className="text-[11px] text-[#858B9A] uppercase tracking-wider font-semibold">
-              Angle Sum Σ =
-            </span>
-            <span
-              className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
-                isFlat
-                  ? 'text-[#E8EAF0]'
-                  : isGreater
-                  ? 'text-[#FFD166]'
-                  : 'text-[#06D6A0]'
-              }`}
-            >
-              {displaySum.toFixed(1)}°
-            </span>
-          </div>
+    <section aria-label="Angle sum readout" className="px-5 pt-5 pb-6 border-b border-rule">
+      <div className="flex items-center justify-between text-[13px]">
+        <span className="text-ink-muted">Angle sum</span>
+        <span className="flex items-center gap-1.5 text-ink-soft">
+          <span className="w-2.5 h-2.5" style={{ background: worldColor[world] }} aria-hidden="true" />
+          {meta.label}
+          <span className="font-mono text-[11px] text-ink-muted">{meta.curvature}</span>
+        </span>
+      </div>
 
-          {/* Excess / Defect Chip */}
+      <div className="mt-2 font-serif text-[64px] leading-[0.95] tracking-tight text-ink tabular" aria-live="polite">
+        {displaySum.toFixed(1)}°
+      </div>
+
+      <p className="mt-2 text-[14px] text-ink-soft">
+        {isFlat ? (
+          <>Exactly 180°, however you drag it.</>
+        ) : (
+          <>
+            180° {isGreater ? '+' : '−'}{' '}
+            <span className="font-medium tabular" style={{ color: worldInk[world] }}>
+              {Math.abs(delta).toFixed(1)}° {isGreater ? 'excess' : 'defect'}
+            </span>
+          </>
+        )}
+      </p>
+
+      {/* α + β + γ laid end to end, against the 180° mark */}
+      <div className="mt-5" aria-hidden="true">
+        <div className="relative h-3">
+          <div className="absolute inset-0 bg-paper-sunk" />
+          {(() => {
+            let start = 0;
+            return activeMeasurements.angles.map((deg, i) => {
+              const left = start;
+              start += deg;
+              return (
+                <div
+                  key={i}
+                  className="absolute top-0 bottom-0 border-r border-paper-raised"
+                  style={{ left: pct(left), width: `calc(${pct(left + deg)} - ${pct(left)})`, background: angleShades[i] }}
+                />
+              );
+            });
+          })()}
           {!isFlat && (
             <div
-              className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold border flex items-center gap-1 ${
-                isGreater
-                  ? 'bg-[#FFD166]/15 text-[#FFD166] border-[#FFD166]/30'
-                  : 'bg-[#06D6A0]/15 text-[#06D6A0] border-[#06D6A0]/30'
-              }`}
-            >
-              <span>
-                {isGreater
-                  ? `+${activeMeasurements.defectOrExcess.toFixed(1)}° excess`
-                  : `${activeMeasurements.defectOrExcess.toFixed(1)}° defect`}
-              </span>
-            </div>
+              className="absolute top-0 bottom-0"
+              style={{
+                left: pct(Math.min(180, activeMeasurements.sum)),
+                width: `calc(${pct(Math.max(180, activeMeasurements.sum))} - ${pct(Math.min(180, activeMeasurements.sum))})`,
+                background: isGreater ? worldColor[world] : 'transparent',
+                outline: isGreater ? 'none' : `1.5px dashed ${worldColor[world]}`,
+                outlineOffset: '-1.5px',
+              }}
+            />
           )}
-
-          {isFlat && (
-            <div className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#181B22] text-[#858B9A] border border-[#292C35]">
-              Exact Invariant
-            </div>
-          )}
+          <div className="absolute -top-1 -bottom-1 w-px bg-ink" style={{ left: pct(180) }} />
         </div>
-
-        {/* Individual Angles breakdown */}
-        <div className="flex items-center gap-4 mt-1 pt-1.5 border-t border-[#292C35]/60 text-xs font-mono text-[#858B9A]">
-          <span>
-            α ={' '}
-            <strong className="text-[#E8EAF0]">{activeMeasurements.angles[0].toFixed(1)}°</strong>
-          </span>
-          <span>•</span>
-          <span>
-            β ={' '}
-            <strong className="text-[#E8EAF0]">{activeMeasurements.angles[1].toFixed(1)}°</strong>
-          </span>
-          <span>•</span>
-          <span>
-            γ ={' '}
-            <strong className="text-[#E8EAF0]">{activeMeasurements.angles[2].toFixed(1)}°</strong>
-          </span>
+        <div className="relative h-4 mt-1 font-mono text-[10px] text-ink-muted">
+          <span className="absolute" style={{ left: pct(180), transform: 'translateX(-50%)' }}>180°</span>
         </div>
       </div>
 
-      {/* Three-Worlds Comparison Strip */}
-      <div className="flex items-center gap-1.5 bg-[#0D0F14]/90 backdrop-blur-md p-1 rounded-xl border border-[#292C35] pointer-events-auto text-xs font-mono">
-        <span className="text-[10px] text-[#5A6070] px-2 uppercase font-semibold hidden sm:inline">
-          For Current Sides:
-        </span>
-        {stripData.map((item) => {
-          const isActive = world === item.id;
-          const isPossible = item.sum !== 'N/A';
+      <dl className="mt-3 grid grid-cols-3 gap-2">
+        {(['α', 'β', 'γ'] as const).map((name, i) => (
+          <div key={name} className="flex items-baseline gap-1.5">
+            <dt className="flex items-center gap-1 text-[13px] text-ink-muted">
+              <span className="w-2 h-2" style={{ background: angleShades[i] }} aria-hidden="true" />
+              <span className="font-serif italic text-[15px]">{name}</span>
+            </dt>
+            <dd className="font-mono text-[13px] text-ink tabular">{activeMeasurements.angles[i].toFixed(1)}°</dd>
+          </div>
+        ))}
+      </dl>
 
-          return (
-            <button
-              key={item.id}
-              onClick={() => isPossible && setWorld(item.id)}
-              disabled={!isPossible}
-              className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1.5 ${
-                isActive
-                  ? 'bg-[#181B22] text-[#69A3FF] border border-[#69A3FF]/40 font-bold shadow-sm'
-                  : isPossible
-                  ? 'text-[#858B9A] hover:text-[#E8EAF0] hover:bg-[#181B22]/50'
-                  : 'text-[#414552] cursor-not-allowed opacity-50'
-              }`}
-              title={
-                isPossible
-                  ? `Switch to ${item.label} world`
-                  : `Side lengths cannot form a triangle in ${item.label} space`
-              }
-            >
-              <span>{item.label}</span>
-              <span className={`text-[10px] ${isActive ? 'text-[#FFD166]' : 'text-[#858B9A]'}`}>
-                {item.sum}
-              </span>
-            </button>
-          );
-        })}
+      {/* Same sides, other worlds */}
+      <div className="mt-6">
+        <h3 className="text-[13px] text-ink-muted">Same side lengths in each world</h3>
+        <ul className="mt-2 divide-y divide-rule border-y border-rule">
+          {stripData.map((item) => {
+            const isActive = world === item.id;
+            const isPossible = item.sum !== null;
+            const label = WORLD_META[item.id].label;
+            return (
+              <li key={item.id}>
+                <button
+                  onClick={() => isPossible && setWorld(item.id)}
+                  disabled={!isPossible}
+                  aria-current={isActive}
+                  className={`w-full flex items-center gap-2.5 py-2 px-1 text-left text-[14px] transition-colors ${
+                    isActive ? 'text-ink' : isPossible ? 'text-ink-soft hover:bg-paper-sunk' : 'text-ink-faint cursor-not-allowed'
+                  }`}
+                  title={isPossible ? `Switch to ${label}` : `These side lengths can't close into a triangle on the ${label.toLowerCase()}`}
+                >
+                  <span
+                    className="w-2.5 h-2.5 shrink-0"
+                    style={{ background: worldColor[item.id], opacity: isPossible ? 1 : 0.35 }}
+                    aria-hidden="true"
+                  />
+                  <span className={isActive ? 'font-medium' : ''}>{label}</span>
+                  <span className="ml-auto font-mono text-[13px] tabular">
+                    {isPossible ? `${item.sum!.toFixed(1)}°` : 'won’t close'}
+                  </span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-ink' : 'bg-transparent'}`} aria-hidden="true" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </div>
-    </div>
+    </section>
   );
 };

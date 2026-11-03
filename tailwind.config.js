@@ -1,46 +1,46 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: ['class'],
   content: [
     './index.html',
     './src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
+      // Byrne notebook palette. Keep in sync with src/theme/palette.ts.
       colors: {
-        background: '#090A0D',
-        panel: {
-          DEFAULT: '#12141A',
-          secondary: '#181B22',
-          subtle: '#1f232c',
+        paper: {
+          DEFAULT: '#F3EEE2',
+          raised: '#FAF7F0',
+          sunk: '#E9E2D2',
         },
-        border: {
-          DEFAULT: '#292C35',
-          subtle: '#1F2229',
-          light: '#3A3F4C',
+        rule: {
+          DEFAULT: '#D3CAB6',
+          strong: '#B3A991',
         },
-        lab: {
-          text: '#E8EAF0',
-          muted: '#858B9A',
-          accent: '#69A3FF',
-          accentHover: '#87B5FF',
-          accentMuted: 'rgba(105, 163, 255, 0.15)',
-          silver: '#E0E4EC',
-          gold: '#FFD166',
-          emerald: '#06D6A0',
-          ruby: '#EF476F',
+        ink: {
+          DEFAULT: '#1C1B19',
+          soft: '#4A463F',
+          muted: '#756E61',
+          faint: '#A0988A',
         },
+        blue: {
+          DEFAULT: '#1F4E8C',
+          deep: '#163B6C',
+        },
+        red: '#C23B22',
+        yellow: '#E0A526',
+        ochre: '#8C6310',
       },
       fontFamily: {
-        mono: ['JetBrains Mono', 'Fira Code', 'Roboto Mono', 'ui-monospace', 'monospace'],
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        serif: ['"Newsreader Variable"', 'Georgia', 'serif'],
+        sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        'glow-accent': '0 0 15px rgba(105, 163, 255, 0.25)',
-        'panel': '0 4px 20px rgba(0, 0, 0, 0.45)',
+        // A single, soft "sheet lifted off the desk" shadow. No glows.
+        sheet: '0 1px 0 rgba(28, 27, 25, 0.04), 0 6px 18px -8px rgba(28, 27, 25, 0.18)',
       },
     },
   },
   plugins: [],
 }
-

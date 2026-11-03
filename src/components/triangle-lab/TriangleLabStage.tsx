@@ -6,13 +6,13 @@ import { useGeometryStore } from '../../store/geometryStore';
 import { FlatTriangleView } from './FlatTriangleView';
 import { SphericalTriangleScene } from './SphericalTriangleScene';
 import { SaddleTriangleScene } from './SaddleTriangleScene';
-import { TriangleHUD } from './TriangleHUD';
 import {
-  euclideanTriangle,
   sphericalTriangle,
   saddleTriangle,
+  saddlePosition,
   DEFAULT_SPHERE_RADIUS,
 } from '../../geometry-engine';
+import { palette } from '../../theme/palette';
 
 export const TriangleLabStage: React.FC = () => {
   const {
@@ -22,7 +22,6 @@ export const TriangleLabStage: React.FC = () => {
     isDragging,
     cycleSelectedVertex,
     nudgeSelectedVertex,
-    flatTriangle,
     sphereTriangle,
     saddleTriangle: hTri,
     markQuestionSolved,
@@ -61,17 +60,29 @@ export const TriangleLabStage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cycleSelectedVertex, nudgeSelectedVertex]);
 
-  // Camera orientation & reset
+  // Camera orientation & reset: frame the current triangle rather than a fixed spot
   useEffect(() => {
-    if (controlsRef.current) {
-      if (world === 'sphere') {
-        controlsRef.current.object.position.set(0, 1.5, 5.8);
-      } else if (world === 'hyperbolic') {
-        controlsRef.current.object.position.set(0, 4.2, 5.0);
-      }
-      controlsRef.current.target.set(0, 0, 0);
-      controlsRef.current.update();
+    const controls = controlsRef.current;
+    if (!controls) return;
+    const { sphereTriangle: s, saddleTriangle: h } = useGeometryStore.getState();
+    if (world === 'sphere') {
+      // Look at the sphere from the direction of the triangle's centroid
+      const cx = s.p1.x + s.p2.x + s.p3.x;
+      const cy = s.p1.y + s.p2.y + s.p3.y;
+      const cz = s.p1.z + s.p2.z + s.p3.z;
+      const len = Math.hypot(cx, cy, cz) || 1;
+      const dist = 7.0;
+      controls.object.position.set((cx / len) * dist, (cy / len) * dist, (cz / len) * dist);
+      controls.target.set(0, 0, 0);
+    } else if (world === 'hyperbolic') {
+      // Orbit around the triangle's centroid on the surface (scene is y-up)
+      const u = (h.p1.x + h.p2.x + h.p3.x) / 3;
+      const v = (h.p1.y + h.p2.y + h.p3.y) / 3;
+      const c = saddlePosition(u, v);
+      controls.target.set(c.x, c.z, c.y);
+      controls.object.position.set(c.x + 0.6, c.z + 3.6, c.y + 4.4);
     }
+    controls.update();
   }, [cameraResetSeq, world]);
 
   // Automated Question Solve Detection:
@@ -93,10 +104,7 @@ export const TriangleLabStage: React.FC = () => {
   }, [world, sphereTriangle, hTri, solvedQuestions, markQuestionSolved]);
 
   return (
-    <div className="relative w-full h-full bg-[#090A0D] overflow-hidden select-none">
-      {/* Dynamic Triangle HUD */}
-      <TriangleHUD />
-
+    <div className="absolute inset-0 bg-paper overflow-hidden select-none">
       {/* World Stage Display */}
       {world === 'flat' ? (
         // 1. Flat Euclidean World: Pure SVG Top-Down Renderer
@@ -106,14 +114,14 @@ export const TriangleLabStage: React.FC = () => {
         <Canvas
           camera={{ position: [0, 4.0, 5.5], fov: 45 }}
           gl={{ antialias: true, alpha: false }}
-          style={{ background: '#090A0D' }}
+          style={{ background: palette.paper }}
         >
-          <color attach="background" args={['#090A0D']} />
+          <color attach="background" args={[palette.paper]} />
 
-          {/* Lighting */}
-          <ambientLight intensity={0.65} />
-          <directionalLight position={[10, 15, 10]} intensity={0.85} />
-          <directionalLight position={[-10, -5, -8]} intensity={0.3} color="#69A3FF" />
+          {/* Soft studio light: the surfaces should read like printed figures */}
+          <ambientLight intensity={0.9} />
+          <directionalLight position={[6, 10, 8]} intensity={0.7} />
+          <directionalLight position={[-8, -4, -6]} intensity={0.2} />
 
           {/* Orbit Controls (Disabled while dragging a vertex to prevent camera conflict) */}
           <OrbitControls
@@ -135,12 +143,12 @@ export const TriangleLabStage: React.FC = () => {
         </Canvas>
       )}
 
-      {/* Keyboard Accessibility Hint Pill */}
-      <div className="absolute bottom-3 left-4 z-10 pointer-events-none hidden md:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#12141A]/80 border border-[#292C35]/60 text-[10px] font-mono text-[#858B9A]">
-        <span>Tab: cycle vertex</span>
-        <span>•</span>
-        <span>Arrow keys: nudge</span>
-      </div>
+      {/* Interaction hint */}
+      <p className="absolute bottom-3 left-4 right-4 z-10 pointer-events-none hidden md:block text-[12px] text-ink-muted">
+        Drag a corner{world !== 'flat' && ', or drag the background to turn the view'}.{' '}
+        <kbd className="font-mono text-[11px] px-1 border border-rule rounded-sm bg-paper-raised">Tab</kbd> picks a corner,{' '}
+        <kbd className="font-mono text-[11px] px-1 border border-rule rounded-sm bg-paper-raised">←↑→↓</kbd> nudge it.
+      </p>
     </div>
   );
 };

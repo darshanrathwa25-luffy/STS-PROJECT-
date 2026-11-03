@@ -6,6 +6,7 @@ import { useGeometryStore } from '../../store/geometryStore';
 import { EuclideanScene } from '../../scenes/EuclideanScene';
 import { SphericalScene } from '../../scenes/SphericalScene';
 import { HyperbolicScene } from '../../scenes/HyperbolicScene';
+import { palette } from '../../theme/palette';
 
 export const GeometryCanvas: React.FC = () => {
   const {
@@ -32,19 +33,19 @@ export const GeometryCanvas: React.FC = () => {
   }, [cameraResetSeq, world]);
 
   return (
-    <div className="relative w-full h-full bg-[#090A0D] overflow-hidden select-none">
+    <div className="relative w-full h-full bg-paper overflow-hidden select-none">
       {/* Three.js R3F Canvas */}
       <Canvas
         camera={{ position: [0, 6, 7.5], fov: 45 }}
         gl={{ antialias: true, alpha: false }}
-        style={{ background: '#090A0D' }}
+        style={{ background: palette.paper }}
       >
-        <color attach="background" args={['#090A0D']} />
+        <color attach="background" args={[palette.paper]} />
 
         {/* Ambient & Directional Lights */}
-        <ambientLight intensity={0.65} />
+        <ambientLight intensity={0.9} />
         <directionalLight position={[10, 15, 10]} intensity={0.8} />
-        <directionalLight position={[-10, -10, -5]} intensity={0.25} color="#69A3FF" />
+        <directionalLight position={[-10, -10, -5]} intensity={0.2} />
 
         {/* Orbit Controls */}
         <OrbitControls

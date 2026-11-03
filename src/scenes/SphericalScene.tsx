@@ -11,6 +11,7 @@ import {
   degToRad,
   sphericalTriangle,
 } from '../geometry-engine';
+import { palette } from '../theme/palette';
 
 export const SphericalScene: React.FC = () => {
   const {
@@ -251,7 +252,7 @@ export const SphericalScene: React.FC = () => {
                 itemSize={3}
               />
             </bufferGeometry>
-            <lineBasicMaterial color="#2B3245" transparent opacity={0.4} />
+            <lineBasicMaterial color={palette.rule} transparent opacity={0.4} />
           </line>
         ))}
 
@@ -268,13 +269,13 @@ export const SphericalScene: React.FC = () => {
                 itemSize={3}
               />
             </bufferGeometry>
-            <lineBasicMaterial color="#E0E4EC" linewidth={2} />
+            <lineBasicMaterial color={palette.ink} linewidth={2} />
           </line>
 
           {/* Point P */}
           <mesh position={parallelData.p3D}>
             <sphereGeometry args={[0.08, 16, 16]} />
-            <meshBasicMaterial color="#69A3FF" />
+            <meshBasicMaterial color={palette.blue} />
           </mesh>
 
           {/* Fan circles */}
@@ -288,7 +289,7 @@ export const SphericalScene: React.FC = () => {
                   itemSize={3}
                 />
               </bufferGeometry>
-              <lineBasicMaterial color="#4A5568" transparent opacity={0.3} />
+              <lineBasicMaterial color={palette.ruleStrong} transparent opacity={0.3} />
             </line>
           ))}
 
@@ -302,7 +303,7 @@ export const SphericalScene: React.FC = () => {
                 itemSize={3}
               />
             </bufferGeometry>
-            <lineBasicMaterial color="#EF476F" linewidth={2} />
+            <lineBasicMaterial color={palette.red} linewidth={2} />
           </line>
 
           {/* Antipodal intersection points with pulsating rings */}
@@ -310,7 +311,7 @@ export const SphericalScene: React.FC = () => {
             <group key={idx} position={pt}>
               <mesh>
                 <sphereGeometry args={[0.07, 16, 16]} />
-                <meshBasicMaterial color="#FFD166" />
+                <meshBasicMaterial color={palette.ochre} />
               </mesh>
             </group>
           ))}
@@ -329,7 +330,7 @@ export const SphericalScene: React.FC = () => {
                 itemSize={3}
               />
             </bufferGeometry>
-            <lineBasicMaterial color="#69A3FF" linewidth={2} />
+            <lineBasicMaterial color={palette.blue} linewidth={2} />
           </line>
         ))}
 
@@ -345,7 +346,7 @@ export const SphericalScene: React.FC = () => {
               }}
             >
               <sphereGeometry args={[0.08, 16, 16]} />
-              <meshBasicMaterial color={isSelected ? '#69A3FF' : '#E0E4EC'} />
+              <meshBasicMaterial color={isSelected ? palette.blue : palette.ink} />
             </mesh>
           </group>
         );

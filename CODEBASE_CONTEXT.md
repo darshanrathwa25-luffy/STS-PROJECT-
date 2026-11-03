@@ -32,7 +32,7 @@ Scripts (`package.json`): `dev` (vite, port 3000, host 0.0.0.0), `build` (`tsc &
 
 `vite.config.ts`: `@` alias → `./src`; dev server `allowedHosts` contains a hard-coded ngrok host (`grouped-brick-affair.ngrok-free.dev`).
 
-Theme palette (used inline as hex, not via Tailwind tokens in most places): canvas `#090A0D`, panels `#12141A`/`#0D0F14`/`#181B22`, border `#292C35`, text `#E8EAF0`, muted `#858B9A`, accent blue `#69A3FF`, gold `#FFD166` (sphere / excess), green `#06D6A0` (saddle / defect / solved), red `#EF476F`.
+Theme: **"Byrne notebook"** (light; after Oliver Byrne's 1847 colour Euclid). Tokens live in `tailwind.config.js` (`paper`, `paper-raised`, `paper-sunk`, `rule`, `rule-strong`, `ink`, `ink-soft`, `ink-muted`, `ink-faint`, `blue`, `red`, `yellow`, `ochre`) and, for Three.js/SVG literals, in `src/theme/palette.ts` (keep the two in sync). One primary per world: flat = blue, sphere = red, saddle = yellow (use `ochre` for yellow *text*). Fonts: Newsreader (serif: headings, big numbers, variables), IBM Plex Sans (UI), IBM Plex Mono (values). Don't add raw hex classes in active components. Layout: top bar, the figure (stage) on the left, a margin column on the right with the readout (`TriangleHUD`) and the question (`QuestionCard`); `DetailsDrawer` is the "Notes" sheet. `components/experiments/*` and `components/sts/*` are not imported anywhere and still use the old dark hex classes.
 
 ## 3. Repository layout (actual)
 

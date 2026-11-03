@@ -1,16 +1,22 @@
 import React from 'react';
-import { useGeometryStore, WorldKind, LabKind, AppMode } from '../../store/geometryStore';
-import {
-  Compass,
-  Volume2,
-  VolumeX,
-  RotateCcw,
-  Info,
-  Layers,
-  Activity,
-  Triangle as TriangleIcon,
-  HelpCircle,
-} from 'lucide-react';
+import { useGeometryStore, WorldKind, LabKind } from '../../store/geometryStore';
+import { Volume2, VolumeX, RotateCcw, PanelRight } from 'lucide-react';
+import { worldColor } from '../../theme/palette';
+import { ByrneMark } from './ByrneMark';
+
+const worlds: { id: WorldKind; label: string; curvature: string }[] = [
+  { id: 'flat', label: 'Flat', curvature: 'K = 0' },
+  { id: 'sphere', label: 'Sphere', curvature: 'K > 0' },
+  { id: 'hyperbolic', label: 'Saddle', curvature: 'K < 0' },
+];
+
+const labs: { id: LabKind; label: string; title: string }[] = [
+  { id: 'triangle', label: 'Triangles', title: 'Triangle lab: angle sums and curvature' },
+  { id: 'parallel', label: 'Parallels', title: "Parallel lines lab: Euclid's fifth postulate" },
+];
+
+const iconButton =
+  'inline-flex items-center justify-center w-8 h-8 rounded-md text-ink-muted hover:text-ink hover:bg-paper-sunk transition-colors';
 
 export const TopBar: React.FC = () => {
   const {
@@ -28,173 +34,126 @@ export const TopBar: React.FC = () => {
     setIsLanding,
   } = useGeometryStore();
 
-  const worlds: { id: WorldKind; label: string; curvature: string }[] = [
-    { id: 'flat', label: 'Flat', curvature: 'K = 0' },
-    { id: 'sphere', label: 'Sphere', curvature: 'K > 0' },
-    { id: 'hyperbolic', label: 'Hyperbolic', curvature: 'K < 0' },
-  ];
+  const worldSwitcher = (fill = false) =>
+    appMode !== 'compare' ? (
+      <nav
+        aria-label="Geometry World Selector"
+        className={`flex items-center rounded-lg border border-rule bg-paper-raised p-0.5 ${fill ? 'w-full' : ''}`}
+      >
+        {worlds.map((w) => {
+          const active = world === w.id;
+          return (
+            <button
+              key={w.id}
+              onClick={() => setWorld(w.id)}
+              aria-pressed={active}
+              aria-label={`Switch to ${w.id === 'hyperbolic' ? 'Hyperbolic' : w.label} world`}
+              className={`flex items-center justify-center gap-2 px-3 h-8 rounded-md text-[13px] transition-colors ${
+                fill ? 'flex-1' : ''
+              } ${active ? 'bg-paper-sunk text-ink font-medium' : 'text-ink-muted hover:text-ink'}`}
+            >
+              <span
+                className="w-2.5 h-2.5 shrink-0"
+                style={{ background: worldColor[w.id], opacity: active ? 1 : 0.55 }}
+                aria-hidden="true"
+              />
+              <span>{w.label}</span>
+              <span className="hidden lg:inline font-mono text-[11px] text-ink-muted">{w.curvature}</span>
+            </button>
+          );
+        })}
+      </nav>
+    ) : null;
 
   return (
-    <header className="h-14 bg-[#12141A]/95 backdrop-blur-md border-b border-[#292C35] px-4 sm:px-6 flex items-center justify-between z-30 select-none relative shrink-0">
-      {/* Left: Wordmark & STS Pill */}
-      <div className="flex items-center gap-3">
+    <header className="shrink-0 border-b border-rule bg-paper px-3 sm:px-5 z-30 select-none">
+      <div className="h-14 grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-3">
+      {/* Wordmark */}
+      <div className="flex items-center gap-4 min-w-0">
         <button
           onClick={() => setIsLanding(true)}
-          className="flex items-center gap-2.5 group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#69A3FF] rounded-lg p-1 transition"
-          title="Return to Introduction / Landing"
+          className="flex items-center gap-2.5 rounded-md -m-1 p-1 min-w-0"
+          title="Back to the introduction"
+          aria-label="Return to Introduction / Landing"
         >
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#181B22] border border-[#292C35] text-[#69A3FF] group-hover:border-[#69A3FF]/50 transition">
-            <Compass className="w-4 h-4 transition-transform group-hover:rotate-45" />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-sm tracking-wide text-[#E8EAF0] uppercase font-mono">
-                Curvature Lab
-              </span>
-              <span className="text-[9px] font-mono font-medium px-1.5 py-0.2 rounded bg-[#181B22] text-[#69A3FF] border border-[#69A3FF]/30">
-                STS
-              </span>
-            </div>
-            <span className="text-[10px] text-[#858B9A] font-sans hidden sm:block">
-              Interactive Geometry Playground
-            </span>
-          </div>
+          <ByrneMark className="w-6 h-6 shrink-0" />
+          <span className="font-serif text-[19px] leading-none text-ink whitespace-nowrap hidden xl:inline">
+            Curvature Lab
+          </span>
         </button>
-      </div>
 
-      {/* Center: Centered World Switcher (Hidden in Compare Mode) */}
-      {appMode !== 'compare' && (
-        <nav
-          aria-label="Geometry World Selector"
-          className="absolute left-1/2 -translate-x-1/2 flex items-center bg-[#0D0F14] p-1 rounded-xl border border-[#292C35] shadow-inner"
-        >
-          {worlds.map((w) => {
-            const active = world === w.id;
+        <nav aria-label="Lab" className="flex items-center gap-1 xl:border-l xl:border-rule xl:pl-4">
+          {labs.map((l) => {
+            const active = lab === l.id;
             return (
               <button
-                key={w.id}
-                onClick={() => setWorld(w.id)}
-                className={`px-3 py-1 rounded-lg text-xs transition flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#69A3FF] ${
-                  active
-                    ? 'bg-[#181B22] text-[#69A3FF] border border-[#69A3FF]/40 font-semibold shadow-sm'
-                    : 'text-[#858B9A] hover:text-[#E8EAF0] hover:bg-[#181B22]/40'
+                key={l.id}
+                onClick={() => setLab(l.id)}
+                title={l.title}
+                aria-pressed={active}
+                className={`px-2 py-1 text-[13px] rounded-md transition-colors ${
+                  active ? 'text-ink font-medium bg-paper-sunk' : 'text-ink-muted hover:text-ink'
                 }`}
               >
-                <span>{w.label}</span>
-                <span
-                  className={`text-[9px] font-mono px-1 py-0.2 rounded ${
-                    active
-                      ? 'bg-[#69A3FF]/15 text-[#69A3FF]'
-                      : 'bg-[#181B22] text-[#858B9A]'
-                  }`}
-                >
-                  {w.curvature}
-                </span>
+                {l.label}
               </button>
             );
           })}
         </nav>
-      )}
+      </div>
 
-      {/* Right Controls: Mode Toggle, Lab Menu, Reset, Audio, Details */}
-      <div className="flex items-center gap-2">
-        {/* Lab Switcher: Triangle | Parallel */}
-        <div className="flex items-center bg-[#0D0F14] p-0.5 rounded-lg border border-[#292C35]">
-          <button
-            onClick={() => setLab('triangle')}
-            className={`px-2.5 py-1 text-xs rounded-md font-medium transition flex items-center gap-1 ${
-              lab === 'triangle'
-                ? 'bg-[#181B22] text-[#FFD166] border border-[#FFD166]/30 shadow-sm'
-                : 'text-[#858B9A] hover:text-[#E8EAF0]'
-            }`}
-            title="Triangle Lab (Angle Sums & Curvature)"
-          >
-            <TriangleIcon className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Triangle</span>
-          </button>
-          <button
-            onClick={() => setLab('parallel')}
-            className={`px-2.5 py-1 text-xs rounded-md font-medium transition flex items-center gap-1 ${
-              lab === 'parallel'
-                ? 'bg-[#181B22] text-[#06D6A0] border border-[#06D6A0]/30 shadow-sm'
-                : 'text-[#858B9A] hover:text-[#E8EAF0]'
-            }`}
-            title="Parallel Lines Lab (Euclid's 5th Postulate)"
-          >
-            <Activity className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Parallel</span>
-          </button>
+      {/* World switcher (second row on small screens) */}
+      <div className="hidden md:block">{worldSwitcher()}</div>
+
+      {/* Tools */}
+      <div className="flex items-center justify-end gap-1">
+        <div className="hidden xl:flex items-center mr-2 text-[12px]">
+          {(['explore', 'compare'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setAppMode(m)}
+              aria-pressed={appMode === m}
+              className={`px-2 py-1 rounded-md capitalize transition-colors ${
+                appMode === m ? 'text-ink font-medium' : 'text-ink-faint hover:text-ink-muted'
+              }`}
+            >
+              {m}
+            </button>
+          ))}
         </div>
 
-        {/* Explore | Compare Mode Toggle */}
-        <div className="hidden lg:flex items-center bg-[#0D0F14] p-0.5 rounded-lg border border-[#292C35]">
-          <button
-            onClick={() => setAppMode('explore')}
-            className={`px-2 py-1 text-xs rounded-md transition font-mono ${
-              appMode === 'explore'
-                ? 'bg-[#181B22] text-[#E8EAF0] font-semibold'
-                : 'text-[#858B9A] hover:text-[#E8EAF0]'
-            }`}
-          >
-            Explore
-          </button>
-          <button
-            onClick={() => setAppMode('compare')}
-            className={`px-2 py-1 text-xs rounded-md transition font-mono flex items-center gap-1 ${
-              appMode === 'compare'
-                ? 'bg-[#181B22] text-[#69A3FF] font-semibold'
-                : 'text-[#858B9A] hover:text-[#E8EAF0]'
-            }`}
-          >
-            <Layers className="w-3 h-3" />
-            Compare
-          </button>
-        </div>
-
-        {/* Reset Button */}
-        <button
-          onClick={resetLab}
-          className="p-1.5 rounded-lg bg-[#181B22] hover:bg-[#202530] text-[#858B9A] hover:text-[#E8EAF0] border border-[#292C35] transition"
-          title="Reset Geometry Lab"
-          aria-label="Reset Lab"
-        >
+        <button onClick={resetLab} className={iconButton} title="Reset the lab" aria-label="Reset Lab">
           <RotateCcw className="w-4 h-4" />
         </button>
 
-        {/* Audio Toggle */}
         <button
           onClick={() => setSoundEnabled(!soundEnabled)}
-          className={`p-1.5 rounded-lg border transition ${
-            soundEnabled
-              ? 'bg-[#181B22] text-[#69A3FF] border-[#69A3FF]/40'
-              : 'bg-[#12141A] text-[#858B9A] hover:text-[#E8EAF0] border-[#292C35]'
-          }`}
-          title={soundEnabled ? 'Mute Audio' : 'Unmute Sound'}
+          className={`${iconButton} ${soundEnabled ? 'text-blue' : ''}`}
+          title={soundEnabled ? 'Mute sound' : 'Turn sound on'}
           aria-label={soundEnabled ? 'Mute Audio' : 'Unmute Sound'}
+          aria-pressed={soundEnabled}
         >
-          {soundEnabled ? (
-            <Volume2 className="w-4 h-4 text-[#69A3FF]" />
-          ) : (
-            <VolumeX className="w-4 h-4" />
-          )}
+          {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
         </button>
 
-        {/* Math & STS Details Drawer Toggle */}
         <button
           onClick={() => setDetailsOpen(!detailsOpen)}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono border transition ${
+          className={`ml-1 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] border transition-colors ${
             detailsOpen
-              ? 'bg-[#181B22] text-[#69A3FF] border-[#69A3FF]/40'
-              : 'bg-[#181B22] text-[#858B9A] hover:text-[#E8EAF0] border-[#292C35]'
+              ? 'border-ink text-ink bg-paper-sunk'
+              : 'border-rule text-ink-soft hover:text-ink hover:border-rule-strong'
           }`}
-          title="Toggle Math & STS Details Drawer"
+          title="Show the maths and history notes"
+          aria-label="Toggle Math & STS Details Drawer"
           aria-expanded={detailsOpen}
         >
-          <Info className="w-4 h-4" />
-          <span className="hidden sm:inline">Details</span>
+          <PanelRight className="w-4 h-4" />
+          <span className="hidden sm:inline">Notes</span>
         </button>
       </div>
+      </div>
+
+      <div className="md:hidden pb-2">{worldSwitcher(true)}</div>
     </header>
   );
 };
-

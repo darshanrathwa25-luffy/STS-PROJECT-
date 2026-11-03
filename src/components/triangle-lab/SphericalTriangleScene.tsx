@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThree, ThreeEvent } from '@react-three/fiber';
-import { Line, Html } from '@react-three/drei';
+import { Line } from '@react-three/drei';
 import { useGeometryStore } from '../../store/geometryStore';
 import {
   sphericalTriangle,
@@ -9,6 +9,8 @@ import {
   DEFAULT_SPHERE_RADIUS,
   Point3D,
 } from '../../geometry-engine';
+import { palette, worldColor } from '../../theme/palette';
+import { VertexHandle, outwardOffset } from './VertexHandle';
 
 export const SphericalTriangleScene: React.FC = () => {
   const {
@@ -175,9 +177,11 @@ export const SphericalTriangleScene: React.FC = () => {
       <mesh receiveShadow>
         <sphereGeometry args={[R * 0.998, 48, 48]} />
         <meshStandardMaterial
-          color="#10131A"
-          roughness={0.75}
-          metalness={0.15}
+          color={palette.paperRaised}
+          emissive={palette.paperSunk}
+          emissiveIntensity={0.55}
+          roughness={1}
+          metalness={0}
         />
       </mesh>
 
@@ -186,76 +190,58 @@ export const SphericalTriangleScene: React.FC = () => {
         <Line
           key={`grat_${idx}`}
           points={pts}
-          color="#202533"
-          lineWidth={1.0}
+          color={palette.ruleStrong}
+          lineWidth={0.8}
           transparent
-          opacity={0.35}
+          opacity={0.7}
         />
       ))}
 
       {/* Subdivided Spherical Triangle Patch */}
       <mesh geometry={patchGeometry}>
         <meshBasicMaterial
-          color="#FFD166"
+          color={worldColor.sphere}
           transparent
-          opacity={0.22}
+          opacity={0.88}
           side={THREE.DoubleSide}
           depthWrite={false}
         />
       </mesh>
 
       {/* Great Circle Triangle Edges */}
-      <Line points={edgeAB_pts} color="#FFD166" lineWidth={2.8} />
-      <Line points={edgeBC_pts} color="#FFD166" lineWidth={2.8} />
-      <Line points={edgeCA_pts} color="#FFD166" lineWidth={2.8} />
+      <Line points={edgeAB_pts} color={palette.ink} lineWidth={2.2} />
+      <Line points={edgeBC_pts} color={palette.ink} lineWidth={2.2} />
+      <Line points={edgeCA_pts} color={palette.ink} lineWidth={2.2} />
 
       {/* Vertex Handles & Labels */}
-      {[
-        { key: 'p1' as const, pt: p1, label: 'A', angleDeg: (tri.alpha * 180) / Math.PI },
-        { key: 'p2' as const, pt: p2, label: 'B', angleDeg: (tri.beta * 180) / Math.PI },
-        { key: 'p3' as const, pt: p3, label: 'C', angleDeg: (tri.gamma * 180) / Math.PI },
-      ].map(({ key, pt, label, angleDeg }) => {
-        const isSelected = selectedVertex === key;
-        const isDraggingThis = activeDrag === key;
-        const facing = isFacingCamera(pt);
-
-        return (
-          <group key={key} position={[pt.x, pt.y, pt.z]}>
-            {/* Visual Handle Sphere */}
-            <mesh
+      {(() => {
+        const centroid: [number, number, number] = [
+          (p1.x + p2.x + p3.x) / 3,
+          (p1.y + p2.y + p3.y) / 3,
+          (p1.z + p2.z + p3.z) / 3,
+        ];
+        return [
+          { key: 'p1' as const, pt: p1, label: 'A', angleDeg: (tri.alpha * 180) / Math.PI },
+          { key: 'p2' as const, pt: p2, label: 'B', angleDeg: (tri.beta * 180) / Math.PI },
+          { key: 'p3' as const, pt: p3, label: 'C', angleDeg: (tri.gamma * 180) / Math.PI },
+        ].map(({ key, pt, label, angleDeg }) => {
+          const pos: [number, number, number] = [pt.x, pt.y, pt.z];
+          return (
+            <VertexHandle
+              key={key}
+              position={pos}
+              labelOffset={outwardOffset(pos, centroid, 0.42)}
+              label={label}
+              angleDeg={angleDeg}
+              selected={selectedVertex === key}
+              dragging={activeDrag === key}
+              showLabel={isFacingCamera(pt)}
+              color={worldColor.sphere}
               onPointerDown={(e) => handlePointerDown(key, e)}
-              scale={isDraggingThis ? 1.3 : 1.0}
-            >
-              <sphereGeometry args={[0.09, 16, 16]} />
-              <meshBasicMaterial
-                color={isSelected ? '#FFFFFF' : '#FFD166'}
-              />
-            </mesh>
-
-            {/* Selection Aura */}
-            {isSelected && (
-              <mesh scale={1.5}>
-                <sphereGeometry args={[0.09, 16, 16]} />
-                <meshBasicMaterial color="#FFD166" transparent opacity={0.3} wireframe />
-              </mesh>
-            )}
-
-            {/* Angle degree label via Html */}
-            {facing && (
-              <Html
-                position={[0, 0.16, 0]}
-                center
-                distanceFactor={10}
-                className="pointer-events-none select-none"
-              >
-                <div className="bg-[#12141A]/90 backdrop-blur-md px-1.5 py-0.5 rounded border border-[#FFD166]/40 text-[10px] font-mono font-bold text-[#FFD166] whitespace-nowrap shadow-md">
-                  {label}: {angleDeg.toFixed(1)}°
-                </div>
-              </Html>
-            )}
-          </group>
-        );
-      })}
+            />
+          );
+        });
+      })()}
     </group>
   );
 };

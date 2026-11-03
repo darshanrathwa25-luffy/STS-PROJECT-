@@ -3,46 +3,63 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #090A0D;
-  color: #E8EAF0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #F3EEE2;
+  color: #1C1B19;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
   overflow: hidden;
   user-select: none;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scientific scrollbar for Control Panel */
+/* Numbers line up in readouts */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: rgba(224, 165, 38, 0.35);
+}
+
+:focus-visible {
+  outline: 2px solid #1F4E8C;
+  outline-offset: 2px;
+}
+
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #12141A;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #292C35;
-  border-radius: 4px;
+  background: #D3CAB6;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3A3F4C;
+  background: #B3A991;
 }
 
-/* Range input styling */
 input[type="range"] {
-  accent-color: #69A3FF;
+  accent-color: #1F4E8C;
 }
 
-/* Canvas styling */
 canvas {
   outline: none;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

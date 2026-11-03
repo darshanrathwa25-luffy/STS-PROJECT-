@@ -13,6 +13,7 @@ import {
   degToRad,
   radToDeg,
 } from '../geometry-engine';
+import { palette } from '../theme/palette';
 
 export const HyperbolicScene: React.FC = () => {
   const {
@@ -113,17 +114,17 @@ export const HyperbolicScene: React.FC = () => {
     const intersection = intersectHyperbolicGeodesics(refDef, candDef);
 
     let classification: 'ultraparallel' | 'limiting' | 'intersecting' = 'ultraparallel';
-    let lineColor = '#69A3FF'; // ultraparallel cyan
+    let lineColor: string = palette.blue; // ultraparallel cyan
 
     if (
       intersection.type === 'limiting_parallel' ||
       Math.abs(Math.abs(candidateAngleDeg) - limitAngleDeg) < 1.0
     ) {
       classification = 'limiting';
-      lineColor = '#FFD166'; // gold for limiting parallel
+      lineColor = palette.ochre; // gold for limiting parallel
     } else if (intersection.type === 'unique') {
       classification = 'intersecting';
-      lineColor = '#EF476F'; // ruby for intersecting
+      lineColor = palette.red; // ruby for intersecting
     }
 
     let intPt3D: THREE.Vector3 | null = null;
@@ -149,11 +150,11 @@ export const HyperbolicScene: React.FC = () => {
           const fCurve = generateHyperbolicGeodesicCurve(fDef, 60, DISK_RADIUS, 0.015);
           const fInt = intersectHyperbolicGeodesics(refDef, fDef);
 
-          let fColor = '#4A5568';
+          let fColor: string = palette.ruleStrong;
           if (fInt.type === 'limiting_parallel' || Math.abs(Math.abs(a) - limitAngleDeg) < 0.5) {
-            fColor = '#FFD166';
+            fColor = palette.ochre;
           } else if (fInt.type === 'divergent') {
-            fColor = '#3B82F6';
+            fColor = palette.blue;
           }
 
           fanCurves.push({
@@ -232,7 +233,7 @@ export const HyperbolicScene: React.FC = () => {
       {/* Deep Navy/Black Disk Floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]}>
         <circleGeometry args={[DISK_RADIUS, 64]} />
-        <meshBasicMaterial color="#07090F" />
+        <meshBasicMaterial color={palette.paperRaised} />
       </mesh>
 
       {/* Particle rim at boundary |z| = 1 */}
@@ -253,11 +254,11 @@ export const HyperbolicScene: React.FC = () => {
       {/* Crisp Circular Boundary Rim (r = 1, infinity) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
         <ringGeometry args={[DISK_RADIUS - 0.02, DISK_RADIUS + 0.02, 128]} />
-        <meshBasicMaterial color="#69A3FF" transparent opacity={0.85} />
+        <meshBasicMaterial color={palette.blue} transparent opacity={0.85} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
         <ringGeometry args={[DISK_RADIUS + 0.03, DISK_RADIUS + 0.06, 128]} />
-        <meshBasicMaterial color="#3A4356" transparent opacity={0.4} />
+        <meshBasicMaterial color={palette.ruleStrong} transparent opacity={0.4} />
       </mesh>
 
       {/* Concentric equal-hyperbolic-distance rings */}
@@ -272,7 +273,7 @@ export const HyperbolicScene: React.FC = () => {
                 itemSize={3}
               />
             </bufferGeometry>
-            <lineBasicMaterial color="#1E2433" transparent opacity={0.5} />
+            <lineBasicMaterial color={palette.rule} transparent opacity={0.5} />
           </line>
         ))}
 
@@ -291,13 +292,13 @@ export const HyperbolicScene: React.FC = () => {
                 itemSize={3}
               />
             </bufferGeometry>
-            <lineBasicMaterial color="#E0E4EC" linewidth={2} />
+            <lineBasicMaterial color={palette.ink} linewidth={2} />
           </line>
 
           {/* External Point P */}
           <mesh position={parallelData.p3D}>
             <sphereGeometry args={[0.08, 16, 16]} />
-            <meshBasicMaterial color="#69A3FF" />
+            <meshBasicMaterial color={palette.blue} />
           </mesh>
 
           {/* Fan curves */}
@@ -332,7 +333,7 @@ export const HyperbolicScene: React.FC = () => {
           {parallelData.intPt3D && (
             <mesh position={parallelData.intPt3D}>
               <sphereGeometry args={[0.07, 16, 16]} />
-              <meshBasicMaterial color="#EF476F" />
+              <meshBasicMaterial color={palette.red} />
             </mesh>
           )}
 
@@ -340,7 +341,7 @@ export const HyperbolicScene: React.FC = () => {
           {parallelData.idealPt3D && (
             <mesh position={parallelData.idealPt3D}>
               <sphereGeometry args={[0.1, 16, 16]} />
-              <meshBasicMaterial color="#FFD166" />
+              <meshBasicMaterial color={palette.ochre} />
             </mesh>
           )}
         </group>
@@ -361,7 +362,7 @@ export const HyperbolicScene: React.FC = () => {
                   itemSize={3}
                 />
               </bufferGeometry>
-              <lineBasicMaterial color="#69A3FF" linewidth={2.5} />
+              <lineBasicMaterial color={palette.blue} linewidth={2.5} />
             </line>
           ))}
         </group>
@@ -379,12 +380,12 @@ export const HyperbolicScene: React.FC = () => {
               }}
             >
               <sphereGeometry args={[0.09, 16, 16]} />
-              <meshBasicMaterial color={isSelected ? '#69A3FF' : '#E0E4EC'} />
+              <meshBasicMaterial color={isSelected ? palette.blue : palette.ink} />
             </mesh>
             {isSelected && (
               <mesh rotation={[-Math.PI / 2, 0, 0]}>
                 <ringGeometry args={[0.16, 0.22, 24]} />
-                <meshBasicMaterial color="#69A3FF" transparent opacity={0.8} />
+                <meshBasicMaterial color={palette.blue} transparent opacity={0.8} />
               </mesh>
             )}
           </group>
