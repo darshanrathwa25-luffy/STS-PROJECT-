@@ -14,7 +14,7 @@ import {
 import { palette } from '../theme/palette';
 
 const SceneLabel: React.FC<{ position: [number, number, number]; children: React.ReactNode }> = ({ position, children }) => (
-  <Html position={position} center className="pointer-events-none select-none">
+  <Html position={position} center zIndexRange={[10, 0]} className="pointer-events-none select-none">
     <span className="font-serif italic text-[20px] leading-none text-ink">{children}</span>
   </Html>
 );

@@ -51,7 +51,7 @@ export const VertexHandle: React.FC<VertexHandleProps> = ({
     )}
 
     {showLabel && (
-      <Html position={labelOffset} center distanceFactor={6} className="pointer-events-none select-none">
+      <Html position={labelOffset} center distanceFactor={6} zIndexRange={[10, 0]} className="pointer-events-none select-none">
         <div className="flex items-baseline gap-1 px-1.5 py-0.5 bg-paper-raised border border-rule-strong text-ink whitespace-nowrap">
           <span className="font-serif italic text-[15px] leading-none">{label}</span>
           <span className="font-mono text-[12px] leading-none tabular">{angleDeg.toFixed(1)}°</span>

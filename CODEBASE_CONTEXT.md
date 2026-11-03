@@ -134,10 +134,13 @@ Pure TypeScript, no DOM/React/Three. Barrel: `index.ts`. Core types in `shared/t
 ## 6b. Guided path, disk lab and content (added Nov 2026)
 
 - **Content lives in `src/content/`**: `questions.ts` (every question, hint, reveal and the short `finding` shown in the findings table) and `chapters.ts` (five chapters, and `STEPS`, the ordered stops on the path). Edit lesson text there, not in components.
-- **Chapters**: I Euclid's world (flat triangles, parallels) · II Curving outward (sphere) · III Curving both ways (saddle) · IV A map of an infinite world (disk: walk, circles, tiles, polygons) · V So what shape is space? (`ReflectionPage`). `ChapterStrip` (under `TopBar`) shows numerals and Back/Next; the current step is derived from `lab` + `world` + `disk.exploration`, so manual tab switching stays in sync. The landing page has a Contents list and is the default entry (`isLanding: true`).
+- **Navigation is one book, organised by question** (topic-first). Chapters and pages (`STEPS`), each with an address:
+  I Triangles (`#/triangles/flat|sphere|saddle`) · II Parallel lines (`#/parallels/…`) · III The hyperbolic plane (`#/disk/walk|circles|tiles|polygons`) · IV What it means (`#/meaning`). `#/` is the cover.
+  `TopBar` = logo (cover), **Contents** menu (every page, ticks for answered questions), reset, sound, Notes. `PageBar` = chapter title, page tabs (a select on phones), Back / Next ("Next: II. Parallel lines" across chapters). There are no separate lab tabs, world switcher, disk tab row or Explore/Compare toggle any more (`appMode` still exists in the store, unused).
+  The current page is derived from `lab` + `world` + `disk.exploration`; `src/navigation/routing.ts` keeps `location.hash` and the store in sync both ways (Back/Forward and refresh work; writes are batched per page change). `src/store/persistence.ts` saves `solvedQuestions` and `reflectionText` to `localStorage`.
 - **Disk lab** (`lab: 'disk'`): `components/disk-lab/` (`DiskLabStage`, `DiskLabPanel`, `figures.tsx`) drawn with `components/poincare/` (`PoincareDisk` SVG + path builders replacing upstream `canvas.js`). State is the store's `disk` slice (plain numbers; points rebuilt with `Poincare`). Discoveries auto-solve when the student does the thing the question asks.
 - **Parallels, saddle world** now renders `geometry/ParallelDiskView` (2D disk) instead of the removed `scenes/HyperbolicScene`.
-- `FindingsTable` (Notes drawer and Chapter V) fills from `solvedQuestions`. `Credits` (landing, Notes, Chapter V) credits hyperbolic-canvas (MIT); keep it.
+- `FindingsTable` (Notes drawer and Chapter IV) fills from `solvedQuestions`. `Credits` (landing, Notes, Chapter IV) credits hyperbolic-canvas (MIT); keep it.
 
 ## 7. State: `store/geometryStore.ts`
 

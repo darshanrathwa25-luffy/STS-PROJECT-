@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -28,7 +28,8 @@ export const TriangleLabStage: React.FC = () => {
     solvedQuestions,
   } = useGeometryStore();
 
-  const controlsRef = useRef<OrbitControlsImpl>(null);
+  // State rather than a ref, so framing re-runs once the controls exist (e.g. on a direct link)
+  const [controls, setControls] = useState<OrbitControlsImpl | null>(null);
 
   // Keyboard navigation: Tab to cycle vertices, Arrow keys to nudge
   useEffect(() => {
@@ -62,7 +63,6 @@ export const TriangleLabStage: React.FC = () => {
 
   // Camera orientation & reset: frame the current triangle rather than a fixed spot
   useEffect(() => {
-    const controls = controlsRef.current;
     if (!controls) return;
     const { sphereTriangle: s, saddleTriangle: h } = useGeometryStore.getState();
     if (world === 'sphere') {
@@ -83,7 +83,7 @@ export const TriangleLabStage: React.FC = () => {
       controls.object.position.set(c.x + 0.6, c.z + 3.6, c.y + 4.4);
     }
     controls.update();
-  }, [cameraResetSeq, world]);
+  }, [cameraResetSeq, world, controls]);
 
   // Automated Question Solve Detection:
   // Q1 Sphere: solved when angle sum > 185°
@@ -125,7 +125,7 @@ export const TriangleLabStage: React.FC = () => {
 
           {/* Orbit Controls (Disabled while dragging a vertex to prevent camera conflict) */}
           <OrbitControls
-            ref={controlsRef}
+            ref={setControls}
             makeDefault
             enabled={!isDragging}
             enableDamping

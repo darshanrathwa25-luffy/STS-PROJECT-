@@ -8,7 +8,12 @@ import '@fontsource/ibm-plex-sans/600.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import App from './App';
+import { initPersistence } from './store/persistence';
+import { initRouting } from './navigation/routing';
 import './index.css';
+
+initPersistence();
+initRouting();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

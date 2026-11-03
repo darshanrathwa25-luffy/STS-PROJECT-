@@ -1,70 +1,81 @@
 import type { WorldKind, LabKind, DiskExploration } from '../store/geometryStore';
 
-/** One stop on the guided path: a lab, set up a particular way. */
-export interface Step {
-  chapter: number;
-  lab: LabKind;
-  world?: WorldKind;
-  exploration?: DiskExploration;
-  /** Short label for the strip, e.g. "Triangles". */
-  label: string;
-}
-
+/**
+ * The site is a short book. Each chapter asks one question; its pages ask it
+ * again on different surfaces (or, in chapter III, in different ways).
+ * Every page has an address, e.g. #/triangles/sphere.
+ */
 export interface Chapter {
   number: number;
   numeral: string;
+  slug: string;
   title: string;
   summary: string;
+}
+
+/** One page: a lab, set up a particular way. */
+export interface Step {
+  chapter: number;
+  slug: string;
+  lab: LabKind;
+  world?: WorldKind;
+  exploration?: DiskExploration;
+  /** Tab label, e.g. "Sphere". */
+  label: string;
+  /** Question answered on this page, for the tick in the contents. */
+  questionId?: string;
 }
 
 export const CHAPTERS: Chapter[] = [
   {
     number: 1,
     numeral: 'I',
-    title: "Euclid's world",
-    summary: 'A flat plane: triangles add up to 180° and there is exactly one parallel.',
+    slug: 'triangles',
+    title: 'Triangles',
+    summary: 'Do the angles of a triangle always add up to 180°? Try it on a plane, a sphere and a saddle.',
   },
   {
     number: 2,
     numeral: 'II',
-    title: 'Curving outward',
-    summary: 'On a sphere the angles add up to more, and parallels disappear.',
+    slug: 'parallels',
+    title: 'Parallel lines',
+    summary: "Euclid's fifth postulate: how many lines through a point never meet a given line?",
   },
   {
     number: 3,
     numeral: 'III',
-    title: 'Curving both ways',
-    summary: 'On a saddle the angles add up to less, and parallels multiply.',
+    slug: 'disk',
+    title: 'The hyperbolic plane',
+    summary: 'The Poincaré disk maps the whole infinite plane. Walk it, measure it, tile it.',
   },
   {
     number: 4,
     numeral: 'IV',
-    title: 'A map of an infinite world',
-    summary: 'The Poincaré disk shows the whole hyperbolic plane at once. Walk it, measure it, tile it.',
-  },
-  {
-    number: 5,
-    numeral: 'V',
-    title: 'So what shape is space?',
+    slug: 'meaning',
+    title: 'What it means',
     summary: 'What you found, why it changed mathematics, and how we measure our own universe.',
   },
 ];
 
 export const STEPS: Step[] = [
-  { chapter: 1, lab: 'triangle', world: 'flat', label: 'Triangles' },
-  { chapter: 1, lab: 'parallel', world: 'flat', label: 'Parallels' },
-  { chapter: 2, lab: 'triangle', world: 'sphere', label: 'Triangles' },
-  { chapter: 2, lab: 'parallel', world: 'sphere', label: 'Parallels' },
-  { chapter: 3, lab: 'triangle', world: 'hyperbolic', label: 'Triangles' },
-  { chapter: 3, lab: 'parallel', world: 'hyperbolic', label: 'Parallels' },
-  { chapter: 4, lab: 'disk', exploration: 'walk', label: 'Walk' },
-  { chapter: 4, lab: 'disk', exploration: 'circles', label: 'Circles' },
-  { chapter: 4, lab: 'disk', exploration: 'tiles', label: 'Tiles' },
-  { chapter: 4, lab: 'disk', exploration: 'polygon', label: 'Polygons' },
-  { chapter: 5, lab: 'reflection', label: 'Reflection' },
+  { chapter: 1, slug: 'flat', lab: 'triangle', world: 'flat', label: 'Flat', questionId: 'tri_flat' },
+  { chapter: 1, slug: 'sphere', lab: 'triangle', world: 'sphere', label: 'Sphere', questionId: 'tri_sphere' },
+  { chapter: 1, slug: 'saddle', lab: 'triangle', world: 'hyperbolic', label: 'Saddle', questionId: 'tri_hyperbolic' },
+  { chapter: 2, slug: 'flat', lab: 'parallel', world: 'flat', label: 'Flat', questionId: 'par_flat' },
+  { chapter: 2, slug: 'sphere', lab: 'parallel', world: 'sphere', label: 'Sphere', questionId: 'par_sphere' },
+  { chapter: 2, slug: 'saddle', lab: 'parallel', world: 'hyperbolic', label: 'Saddle', questionId: 'par_hyperbolic' },
+  { chapter: 3, slug: 'walk', lab: 'disk', exploration: 'walk', label: 'Walk', questionId: 'disk_walk' },
+  { chapter: 3, slug: 'circles', lab: 'disk', exploration: 'circles', label: 'Circles', questionId: 'disk_circles' },
+  { chapter: 3, slug: 'tiles', lab: 'disk', exploration: 'tiles', label: 'Tiles', questionId: 'disk_tiles' },
+  { chapter: 3, slug: 'polygons', lab: 'disk', exploration: 'polygon', label: 'Polygons', questionId: 'disk_polygon' },
+  { chapter: 4, slug: '', lab: 'reflection', label: 'Reading' },
 ];
 
-/** The step matching what is on screen, or -1 if the view is not on the path. */
+export const chapterOf = (step: Step): Chapter => CHAPTERS.find((c) => c.number === step.chapter)!;
+
+export const pagesOf = (chapter: number): Step[] => STEPS.filter((s) => s.chapter === chapter);
+
+/** The page matching what is on screen, or -1 if none does. */
 export function currentStepIndex(lab: LabKind, world: WorldKind, exploration: DiskExploration): number {
   return STEPS.findIndex((s) => {
     if (s.lab !== lab) return false;
@@ -76,4 +87,24 @@ export function currentStepIndex(lab: LabKind, world: WorldKind, exploration: Di
 
 export function firstStepOfChapter(chapter: number): number {
   return STEPS.findIndex((s) => s.chapter === chapter);
+}
+
+/** "#/triangles/sphere", or "#/meaning" for a single-page chapter. */
+export function stepToHash(step: Step): string {
+  const chapter = chapterOf(step);
+  return step.slug ? `#/${chapter.slug}/${step.slug}` : `#/${chapter.slug}`;
+}
+
+/**
+ * The page a hash points at. "#/" or "" is the cover (null). A chapter without a
+ * page ("#/parallels") opens its first page. Unknown addresses give undefined.
+ */
+export function hashToStep(hash: string): Step | null | undefined {
+  const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  if (parts.length === 0) return null;
+  const chapter = CHAPTERS.find((c) => c.slug === parts[0]);
+  if (!chapter) return undefined;
+  const pages = pagesOf(chapter.number);
+  if (parts.length === 1) return pages[0];
+  return pages.find((p) => p.slug === parts[1]);
 }

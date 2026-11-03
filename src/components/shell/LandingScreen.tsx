@@ -87,7 +87,7 @@ export const LandingScreen: React.FC = () => {
                 onClick={() => goToStep(STEPS[0])}
                 className="inline-flex items-center gap-2 h-11 px-5 bg-ink text-paper text-[15px] font-medium hover:bg-ink-soft transition-colors"
               >
-                Begin at chapter I
+                Begin with triangles
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button

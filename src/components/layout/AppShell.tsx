@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGeometryStore } from '../../store/geometryStore';
-import { TopBar, QuestionCard, DetailsDrawer, LandingScreen, ChapterStrip, ReflectionPage } from '../shell';
+import { TopBar, QuestionCard, DetailsDrawer, LandingScreen, PageBar, ReflectionPage } from '../shell';
 import { TriangleLabStage, TriangleHUD } from '../triangle-lab';
 import { GeometryCanvas } from '../geometry/GeometryCanvas';
 import { ParallelControls } from '../geometry/ParallelControls';
@@ -16,7 +16,7 @@ export const AppShell: React.FC = () => {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-paper text-ink">
       <TopBar />
-      <ChapterStrip />
+      <PageBar />
 
       <main className="relative flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         {lab === 'reflection' ? (

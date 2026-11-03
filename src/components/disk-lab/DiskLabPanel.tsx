@@ -1,17 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useGeometryStore, DiskExploration, DISK_WALK_LIMIT } from '../../store/geometryStore';
+import { useGeometryStore, DISK_WALK_LIMIT } from '../../store/geometryStore';
 import { Poincare } from '../../geometry-engine';
 import { palette } from '../../theme/palette';
 import { tilesAtCorner, MAX_POLYGON_CORNERS } from './figures';
 import { WALK_STEP, WALK_TURN } from './DiskLabStage';
 import { RotateCcw, RotateCw, ArrowUp, Play, Pause } from 'lucide-react';
 
-const EXPLORATIONS: { id: DiskExploration; label: string }[] = [
-  { id: 'walk', label: 'Walk' },
-  { id: 'circles', label: 'Circles' },
-  { id: 'tiles', label: 'Tiles' },
-  { id: 'polygon', label: 'Polygons' },
-];
 
 const deg = (rad: number) => (rad * 180) / Math.PI;
 
@@ -315,26 +309,10 @@ const PolygonPanel: React.FC = () => {
 
 export const DiskLabPanel: React.FC = () => {
   const exploration = useGeometryStore((s) => s.disk.exploration);
-  const setDiskExploration = useGeometryStore((s) => s.setDiskExploration);
 
   return (
     <section aria-label="Disk lab controls" className="px-5 pt-5 pb-6 border-b border-rule">
-      <nav aria-label="Exploration" className="grid grid-cols-4 border border-rule">
-        {EXPLORATIONS.map((x, i) => (
-          <button
-            key={x.id}
-            onClick={() => setDiskExploration(x.id)}
-            aria-pressed={exploration === x.id}
-            className={`h-9 text-[13px] transition-colors ${i > 0 ? 'border-l border-rule' : ''} ${
-              exploration === x.id ? 'bg-paper-sunk text-ink font-medium' : 'text-ink-muted hover:text-ink'
-            }`}
-          >
-            {x.label}
-          </button>
-        ))}
-      </nav>
-
-      <div className="mt-5">
+      <div>
         {exploration === 'walk' && <WalkPanel />}
         {exploration === 'circles' && <CirclesPanel />}
         {exploration === 'tiles' && <TilesPanel />}

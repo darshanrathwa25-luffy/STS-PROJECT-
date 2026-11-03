@@ -1,135 +1,137 @@
-import React from 'react';
-import { useGeometryStore, WorldKind, LabKind } from '../../store/geometryStore';
-import { Volume2, VolumeX, RotateCcw, PanelRight } from 'lucide-react';
-import { worldColor } from '../../theme/palette';
+import React, { useEffect, useRef, useState } from 'react';
+import { useGeometryStore } from '../../store/geometryStore';
+import { Volume2, VolumeX, RotateCcw, PanelRight, ChevronDown, Check } from 'lucide-react';
+import { CHAPTERS, STEPS, pagesOf, currentStepIndex } from '../../content/chapters';
 import { ByrneMark } from './ByrneMark';
-
-const worlds: { id: WorldKind; label: string; curvature: string }[] = [
-  { id: 'flat', label: 'Flat', curvature: 'K = 0' },
-  { id: 'sphere', label: 'Sphere', curvature: 'K > 0' },
-  { id: 'hyperbolic', label: 'Saddle', curvature: 'K < 0' },
-];
-
-const labs: { id: LabKind; label: string; title: string }[] = [
-  { id: 'triangle', label: 'Triangles', title: 'Triangle lab: angle sums and curvature' },
-  { id: 'parallel', label: 'Parallels', title: "Parallel lines lab: Euclid's fifth postulate" },
-  { id: 'disk', label: 'Disk', title: 'The whole hyperbolic plane on the Poincaré disk' },
-];
 
 const iconButton =
   'inline-flex items-center justify-center w-8 h-8 rounded-md text-ink-muted hover:text-ink hover:bg-paper-sunk transition-colors';
 
-export const TopBar: React.FC = () => {
-  const {
-    world,
-    setWorld,
-    lab,
-    setLab,
-    appMode,
-    setAppMode,
-    soundEnabled,
-    setSoundEnabled,
-    resetLab,
-    detailsOpen,
-    setDetailsOpen,
-    setIsLanding,
-  } = useGeometryStore();
+/** Every chapter and page, with a tick where the page's question has been answered. */
+const ContentsMenu: React.FC = () => {
+  const { lab, world, goToStep, setIsLanding, solvedQuestions } = useGeometryStore();
+  const exploration = useGeometryStore((s) => s.disk.exploration);
+  const current = STEPS[currentStepIndex(lab, world, exploration)];
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
-  const worldSwitcher = (fill = false) =>
-    lab === 'disk' ? (
-      <div className={`flex items-center justify-center gap-2 h-9 text-[13px] text-ink-soft ${fill ? 'w-full' : ''}`}>
-        <span className="w-2.5 h-2.5" style={{ background: worldColor.hyperbolic }} aria-hidden="true" />
-        Poincaré disk
-        <span className="font-mono text-[11px] text-ink-muted">K = −1</span>
-      </div>
-    ) : lab === 'reflection' ? null : appMode !== 'compare' ? (
-      <nav
-        aria-label="Geometry World Selector"
-        className={`flex items-center rounded-lg border border-rule bg-paper-raised p-0.5 ${fill ? 'w-full' : ''}`}
-      >
-        {worlds.map((w) => {
-          const active = world === w.id;
-          return (
-            <button
-              key={w.id}
-              onClick={() => setWorld(w.id)}
-              aria-pressed={active}
-              aria-label={`Switch to ${w.id === 'hyperbolic' ? 'Hyperbolic' : w.label} world`}
-              className={`flex items-center justify-center gap-2 px-3 h-8 rounded-md text-[13px] transition-colors ${
-                fill ? 'flex-1' : ''
-              } ${active ? 'bg-paper-sunk text-ink font-medium' : 'text-ink-muted hover:text-ink'}`}
-            >
-              <span
-                className="w-2.5 h-2.5 shrink-0"
-                style={{ background: worldColor[w.id], opacity: active ? 1 : 0.55 }}
-                aria-hidden="true"
-              />
-              <span>{w.label}</span>
-              <span className="hidden lg:inline font-mono text-[11px] text-ink-muted">{w.curvature}</span>
-            </button>
-          );
-        })}
-      </nav>
-    ) : null;
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('pointerdown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
 
   return (
-    <header className="shrink-0 border-b border-rule bg-paper px-3 sm:px-5 z-30 select-none">
-      <div className="h-14 grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-3">
-      {/* Wordmark */}
-      <div className="flex items-center gap-4 min-w-0">
-        <button
-          onClick={() => setIsLanding(true)}
-          className="flex items-center gap-2.5 rounded-md -m-1 p-1 min-w-0"
-          title="Back to the introduction"
-          aria-label="Return to Introduction / Landing"
-        >
-          <ByrneMark className="w-6 h-6 shrink-0" />
-          <span className="font-serif text-[19px] leading-none text-ink whitespace-nowrap hidden xl:inline">
-            Curvature Lab
-          </span>
-        </button>
+    <div ref={rootRef} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className={`inline-flex items-center gap-1.5 h-8 px-2.5 text-[13px] border transition-colors ${
+          open ? 'border-ink text-ink bg-paper-sunk' : 'border-rule text-ink-soft hover:border-rule-strong hover:text-ink'
+        }`}
+      >
+        Contents
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
 
-        <nav aria-label="Lab" className="flex items-center gap-1 xl:border-l xl:border-rule xl:pl-4">
-          {labs.map((l) => {
-            const active = lab === l.id;
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-full mt-2 z-50 w-[min(88vw,340px)] max-h-[75vh] overflow-y-auto bg-paper-raised border border-ink/80 shadow-sheet py-2"
+        >
+          <button
+            role="menuitem"
+            onClick={() => {
+              setIsLanding(true);
+              setOpen(false);
+            }}
+            className="w-full text-left px-4 py-1.5 text-[13px] text-ink-muted hover:text-ink hover:bg-paper-sunk"
+          >
+            Cover
+          </button>
+          {CHAPTERS.map((c) => {
+            const pages = pagesOf(c.number);
+            const single = pages.length === 1;
             return (
-              <button
-                key={l.id}
-                onClick={() => setLab(l.id)}
-                title={l.title}
-                aria-pressed={active}
-                className={`px-2 py-1 text-[13px] rounded-md transition-colors ${
-                  active ? 'text-ink font-medium bg-paper-sunk' : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                {l.label}
-              </button>
+              <div key={c.number} className="pt-2">
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    goToStep(pages[0]);
+                    setOpen(false);
+                  }}
+                  className={`w-full flex items-baseline gap-3 px-4 py-1.5 text-left hover:bg-paper-sunk ${
+                    current?.chapter === c.number ? 'text-ink' : 'text-ink-soft'
+                  }`}
+                >
+                  <span className="w-6 font-serif text-[15px] text-ink-muted">{c.numeral}</span>
+                  <span className="font-serif text-[17px]">{c.title}</span>
+                  {single && current === pages[0] && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-ink self-center" />}
+                </button>
+                {!single && (
+                  <ul className="pl-[52px] pr-4">
+                    {pages.map((p) => {
+                      const here = p === current;
+                      const done = p.questionId ? solvedQuestions[p.questionId] : false;
+                      return (
+                        <li key={p.slug}>
+                          <button
+                            role="menuitem"
+                            aria-current={here ? 'page' : undefined}
+                            onClick={() => {
+                              goToStep(p);
+                              setOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-2 py-1 text-left text-[14px] hover:text-ink ${
+                              here ? 'text-ink font-medium' : 'text-ink-soft'
+                            }`}
+                          >
+                            {p.label}
+                            {done && <Check className="w-3.5 h-3.5 text-ochre" aria-label="answered" />}
+                            {here && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-ink" />}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             );
           })}
-        </nav>
-      </div>
-
-      {/* World switcher (second row on small screens) */}
-      <div className="hidden md:block">{worldSwitcher()}</div>
-
-      {/* Tools */}
-      <div className="flex items-center justify-end gap-1">
-        <div className="hidden xl:flex items-center mr-2 text-[12px]">
-          {(['explore', 'compare'] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setAppMode(m)}
-              aria-pressed={appMode === m}
-              className={`px-2 py-1 rounded-md capitalize transition-colors ${
-                appMode === m ? 'text-ink font-medium' : 'text-ink-faint hover:text-ink-muted'
-              }`}
-            >
-              {m}
-            </button>
-          ))}
         </div>
+      )}
+    </div>
+  );
+};
 
-        <button onClick={resetLab} className={iconButton} title="Reset the lab" aria-label="Reset Lab">
+export const TopBar: React.FC = () => {
+  const { soundEnabled, setSoundEnabled, resetLab, detailsOpen, setDetailsOpen, setIsLanding } = useGeometryStore();
+
+  return (
+    <header className="shrink-0 h-14 border-b border-rule bg-paper px-3 sm:px-5 flex items-center gap-3 sm:gap-5 z-30 select-none">
+      <button
+        onClick={() => setIsLanding(true)}
+        className="flex items-center gap-2.5 rounded-md -m-1 p-1"
+        title="Back to the cover"
+        aria-label="Return to Introduction / Landing"
+      >
+        <ByrneMark className="w-6 h-6 shrink-0" />
+        <span className="font-serif text-[19px] leading-none text-ink whitespace-nowrap hidden sm:inline">Curvature Lab</span>
+      </button>
+
+      <ContentsMenu />
+
+      <div className="ml-auto flex items-center gap-1">
+        <button onClick={resetLab} className={iconButton} title="Reset this page" aria-label="Reset Lab">
           <RotateCcw className="w-4 h-4" />
         </button>
 
@@ -146,11 +148,9 @@ export const TopBar: React.FC = () => {
         <button
           onClick={() => setDetailsOpen(!detailsOpen)}
           className={`ml-1 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] border transition-colors ${
-            detailsOpen
-              ? 'border-ink text-ink bg-paper-sunk'
-              : 'border-rule text-ink-soft hover:text-ink hover:border-rule-strong'
+            detailsOpen ? 'border-ink text-ink bg-paper-sunk' : 'border-rule text-ink-soft hover:text-ink hover:border-rule-strong'
           }`}
-          title="Show the maths and history notes"
+          title="Show the maths, your findings and your notes"
           aria-label="Toggle Math & STS Details Drawer"
           aria-expanded={detailsOpen}
         >
@@ -158,9 +158,6 @@ export const TopBar: React.FC = () => {
           <span className="hidden sm:inline">Notes</span>
         </button>
       </div>
-      </div>
-
-      <div className="md:hidden pb-2">{worldSwitcher(true)}</div>
     </header>
   );
 };
