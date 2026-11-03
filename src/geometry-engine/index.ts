@@ -23,3 +23,6 @@ export * from './hyperbolic/saddle';
 
 // Parallel lab set-up and classification
 export * from './parallelLab';
+
+// Poincaré disk geometry, ported from hyperbolic-canvas (MIT)
+export * as Poincare from './poincare';

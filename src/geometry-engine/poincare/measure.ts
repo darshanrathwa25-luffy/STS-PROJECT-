@@ -1,0 +1,92 @@
+// Measurements on the Poincaré disk used by the disk lab. Not part of upstream
+// hyperbolic-canvas; built on the ported classes. Curvature is K = −1 throughout.
+import { TAU } from './constants';
+import { Angle } from './angle';
+import { Point } from './point';
+import { Polygon } from './polygon';
+
+/** Signed Euclidean area of the vertex polygon; > 0 when the vertices run anticlockwise. */
+function orientation(vertices: Point[]): number {
+  let area = 0;
+  for (let i = 0; i < vertices.length; i++) {
+    const a = vertices[i];
+    const b = vertices[(i + 1) % vertices.length];
+    area += a.getX() * b.getY() - b.getX() * a.getY();
+  }
+  return area / 2;
+}
+
+/**
+ * Interior angle (radians) at each vertex of a polygon with hyperbolic sides.
+ * The angle is measured between the geodesics to the two neighbouring vertices,
+ * on the inside of the polygon. Repeated vertices give an angle of 0.
+ */
+export function interiorAngles(vertices: Point[]): number[] {
+  const n = vertices.length;
+  const ccw = orientation(vertices) >= 0;
+  return vertices.map((v, i) => {
+    const prev = vertices[(i + n - 1) % n];
+    const next = vertices[(i + 1) % n];
+    if (v.equals(prev) || v.equals(next)) return 0;
+    const toPrev = v.hyperbolicAngleTo(prev);
+    const toNext = v.hyperbolicAngleTo(next);
+    return ccw ? Angle.normalize(toPrev - toNext) : Angle.normalize(toNext - toPrev);
+  });
+}
+
+export interface PolygonMeasurements {
+  angles: number[];
+  angleSum: number;
+  /** (n − 2)π, the angle sum of a flat polygon with the same number of sides. */
+  flatAngleSum: number;
+  /** flatAngleSum − angleSum. By Gauss–Bonnet with K = −1 this equals the area. */
+  defect: number;
+  area: number;
+}
+
+export function measurePolygon(vertices: Point[]): PolygonMeasurements {
+  const angles = interiorAngles(vertices);
+  const angleSum = angles.reduce((a, b) => a + b, 0);
+  const flatAngleSum = (vertices.length - 2) * Math.PI;
+  const defect = flatAngleSum - angleSum;
+  return { angles, angleSum, flatAngleSum, defect, area: defect };
+}
+
+/**
+ * Corner angle of a regular hyperbolic n-gon with circumradius R.
+ * From the right triangle (centre, vertex, edge midpoint): cosh R = cot(π/n)·cot(α/2).
+ * As R → 0 this tends to the flat value π − 2π/n.
+ */
+export function regularPolygonCornerAngle(n: number, radius: number): number {
+  return 2 * Math.atan(1 / (Math.cosh(radius) * Math.tan(Math.PI / n)));
+}
+
+/** Circumradius giving corner angle `angle`, or NaN if that angle is not smaller than the flat one. */
+export function regularPolygonRadiusForCornerAngle(n: number, angle: number): number {
+  const c = (1 / Math.tan(Math.PI / n)) * (1 / Math.tan(angle / 2));
+  return c >= 1 ? Math.acosh(c) : NaN;
+}
+
+/**
+ * A regular n-gon of circumradius R with one vertex exactly at the origin and its
+ * centre in direction `centerDirection`. Rotating it about the origin (a hyperbolic
+ * isometry) lays copies around that shared corner.
+ */
+export function regularPolygonWithCornerAtOrigin(n: number, radius: number, centerDirection: number): Polygon {
+  const center = Point.givenHyperbolicPolarCoordinates(radius, centerDirection);
+  const towardOrigin = Angle.opposite(centerDirection);
+  const vertices: Point[] = [Point.ORIGIN];
+  for (let i = 1; i < n; i++) {
+    vertices.push(center.hyperbolicDistantPoint(radius, towardOrigin + (TAU / n) * i));
+  }
+  return new Polygon({ vertices });
+}
+
+/** Rotate every vertex of a polygon about the origin. */
+export function rotatePolygonAboutOrigin(polygon: Polygon, angle: number): Polygon {
+  return new Polygon({ vertices: polygon.getVertices().map((v) => v.rotateAboutOrigin(angle)) });
+}
+
+/** Circumference and area of a flat circle of radius r, for comparison with the disk. */
+export const flatCircleCircumference = (r: number) => TAU * r;
+export const flatCircleArea = (r: number) => Math.PI * r * r;
