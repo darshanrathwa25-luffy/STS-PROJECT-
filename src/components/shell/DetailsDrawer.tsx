@@ -100,7 +100,7 @@ export const DetailsDrawer: React.FC = () => {
         { label: 'Defect, from ∫∫ K dA', value: `${deg(tri.defectFromIntegral).toFixed(2)}°` },
       ] as Row[],
       gaussBonnet:
-        'The defect equals the total curvature inside the triangle. The two figures above are computed independently, one from the corners and one by integrating K over the area, and they agree.',
+        'The defect equals minus the total curvature inside the triangle (the curvature is negative, so the defect is positive). The two figures above are computed independently, one from the corners and one by integrating K over the area, and they agree.',
     };
   }, [world, lab, fTri, sTri, hTri]);
 

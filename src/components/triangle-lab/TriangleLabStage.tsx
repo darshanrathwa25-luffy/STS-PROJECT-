@@ -6,12 +6,7 @@ import { useGeometryStore } from '../../store/geometryStore';
 import { FlatTriangleView } from './FlatTriangleView';
 import { SphericalTriangleScene } from './SphericalTriangleScene';
 import { SaddleTriangleScene } from './SaddleTriangleScene';
-import {
-  sphericalTriangle,
-  saddleTriangle,
-  saddlePosition,
-  DEFAULT_SPHERE_RADIUS,
-} from '../../geometry-engine';
+import { saddlePosition } from '../../geometry-engine';
 import { palette } from '../../theme/palette';
 
 export const TriangleLabStage: React.FC = () => {
@@ -22,10 +17,6 @@ export const TriangleLabStage: React.FC = () => {
     isDragging,
     cycleSelectedVertex,
     nudgeSelectedVertex,
-    sphereTriangle,
-    saddleTriangle: hTri,
-    markQuestionSolved,
-    solvedQuestions,
   } = useGeometryStore();
 
   // State rather than a ref, so framing re-runs once the controls exist (e.g. on a direct link)
@@ -85,23 +76,6 @@ export const TriangleLabStage: React.FC = () => {
     controls.update();
   }, [cameraResetSeq, world, controls]);
 
-  // Automated Question Solve Detection:
-  // Q1 Sphere: solved when angle sum > 185°
-  // Q2 Hyperbolic: solved when angle sum < 175°
-  // Q3 Flat: solved when explored
-  useEffect(() => {
-    if (world === 'sphere' && !solvedQuestions['tri_sphere']) {
-      const tri = sphericalTriangle(sphereTriangle.p1, sphereTriangle.p2, sphereTriangle.p3, DEFAULT_SPHERE_RADIUS);
-      if (tri.angleSumDeg > 185) {
-        markQuestionSolved('tri_sphere', true);
-      }
-    } else if (world === 'hyperbolic' && !solvedQuestions['tri_hyperbolic']) {
-      const tri = saddleTriangle(hTri.p1, hTri.p2, hTri.p3);
-      if (tri.angleSumDeg < 175 && !tri.degenerate) {
-        markQuestionSolved('tri_hyperbolic', true);
-      }
-    }
-  }, [world, sphereTriangle, hTri, solvedQuestions, markQuestionSolved]);
 
   return (
     <div className="absolute inset-0 bg-paper overflow-hidden select-none">

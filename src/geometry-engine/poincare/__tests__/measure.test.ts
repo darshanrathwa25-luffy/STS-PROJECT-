@@ -59,3 +59,16 @@ describe('Poincaré measurements', () => {
     }
   });
 });
+
+import { isSimplePolygon } from '../index';
+
+describe('simple polygons', () => {
+  const P = (x: number, y: number) => Point.givenCoordinates(x, y);
+  it('a convex quadrilateral is simple, a bow tie is not', () => {
+    expect(isSimplePolygon([P(-0.4, -0.4), P(0.4, -0.4), P(0.4, 0.4), P(-0.4, 0.4)])).toBe(true);
+    expect(isSimplePolygon([P(-0.4, -0.4), P(0.4, 0.4), P(0.4, -0.4), P(-0.4, 0.4)])).toBe(false);
+  });
+  it('triangles are always simple', () => {
+    expect(isSimplePolygon([P(0, 0), P(0.5, 0), P(0, 0.5)])).toBe(true);
+  });
+});

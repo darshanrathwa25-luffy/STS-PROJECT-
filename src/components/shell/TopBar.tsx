@@ -7,6 +7,33 @@ import { ByrneMark } from './ByrneMark';
 const iconButton =
   'inline-flex items-center justify-center w-8 h-8 rounded-md text-ink-muted hover:text-ink hover:bg-paper-sunk transition-colors';
 
+/** Tutorial: predict, then a task, then the explanation. Explorer: everything open. */
+const ModeToggle: React.FC<{ className?: string }> = ({ className = '' }) => {
+  const { mode, setMode } = useGeometryStore();
+  return (
+    <div role="group" aria-label="Mode" className={`flex items-center border border-rule bg-paper-raised p-0.5 rounded-md ${className}`}>
+      {(
+        [
+          ['tutorial', 'Tutorial', 'Predict, try a task, then see the explanation'],
+          ['explorer', 'Explorer', 'Everything open: no predictions or tasks'],
+        ] as const
+      ).map(([id, label, title]) => (
+        <button
+          key={id}
+          onClick={() => setMode(id)}
+          aria-pressed={mode === id}
+          title={title}
+          className={`h-7 px-2.5 rounded text-[13px] transition-colors ${
+            mode === id ? 'bg-paper-sunk text-ink font-medium' : 'text-ink-muted hover:text-ink'
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 /** Every chapter and page, with a tick where the page's question has been answered. */
 const ContentsMenu: React.FC = () => {
   const { lab, world, goToStep, setIsLanding, solvedQuestions } = useGeometryStore();
@@ -48,6 +75,9 @@ const ContentsMenu: React.FC = () => {
           role="menu"
           className="absolute left-0 top-full mt-2 z-50 w-[min(88vw,340px)] max-h-[75vh] overflow-y-auto bg-paper-raised border border-ink/80 shadow-sheet py-2"
         >
+          <div className="sm:hidden px-4 pb-2 mb-1 border-b border-rule">
+            <ModeToggle className="w-fit" />
+          </div>
           <button
             role="menuitem"
             onClick={() => {
@@ -129,6 +159,7 @@ export const TopBar: React.FC = () => {
       </button>
 
       <ContentsMenu />
+      <ModeToggle className="hidden sm:flex" />
 
       <div className="ml-auto flex items-center gap-1">
         <button onClick={resetLab} className={iconButton} title="Reset this page" aria-label="Reset Lab">

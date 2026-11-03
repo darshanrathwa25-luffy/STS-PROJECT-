@@ -43,7 +43,7 @@ const FIGURES: {
 ];
 
 export const LandingScreen: React.FC = () => {
-  const { setIsLanding, setWorld, setLab, goToStep } = useGeometryStore();
+  const { setIsLanding, setWorld, setLab, goToStep, setMode } = useGeometryStore();
 
   const startWith = (world: WorldKind) => {
     setWorld(world);
@@ -82,21 +82,37 @@ export const LandingScreen: React.FC = () => {
               a sphere and a saddle, and find out for yourself what changes and why it mattered.
             </p>
 
-            <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
+            <div className="mt-9 flex flex-wrap items-center gap-3">
               <button
-                onClick={() => goToStep(STEPS[0])}
+                onClick={() => {
+                  setMode('tutorial');
+                  goToStep(STEPS[0]);
+                }}
                 className="inline-flex items-center gap-2 h-11 px-5 bg-ink text-paper text-[15px] font-medium hover:bg-ink-soft transition-colors"
               >
-                Begin with triangles
+                Start the tutorial
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setIsLanding(false)}
-                className="text-[15px] text-ink-soft hover:text-ink underline decoration-rule-strong underline-offset-4"
+                onClick={() => {
+                  setMode('explorer');
+                  goToStep(STEPS[0]);
+                }}
+                className="inline-flex items-center h-11 px-5 border border-ink text-ink text-[15px] hover:bg-paper-raised transition-colors"
               >
-                Or carry on where you left off
+                Explore freely
               </button>
             </div>
+            <p className="mt-4 text-[14px] leading-relaxed text-ink-muted max-w-[34rem]">
+              The tutorial asks you to predict each result before you test it. Explorer opens everything at once, with
+              the explanations a click away.{' '}
+              <button
+                onClick={() => setIsLanding(false)}
+                className="text-ink-soft hover:text-ink underline decoration-rule-strong underline-offset-4"
+              >
+                Carry on where you left off
+              </button>
+            </p>
           </div>
 
           {/* Fig. 1 */}

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useGeometryStore } from '../../store/geometryStore';
 import { Poincare, PARALLEL_LAB_SETUP, classifyParallelCandidate, ParallelVerdict } from '../../geometry-engine';
 import { palette } from '../../theme/palette';
-import { PoincareDisk, fullLinePath, toSvg } from '../poincare';
+import { PoincareDisk, fullLinePath, segmentPath, toSvg } from '../poincare';
 
 const { Point, Line } = Poincare;
 
@@ -54,6 +54,12 @@ export const ParallelDiskView: React.FC = () => {
           {fan.map((f, i) => (
             <path key={i} d={f.d} fill="none" stroke={f.color} strokeOpacity={0.45} strokeWidth={1.25} {...stroke} />
           ))}
+
+          {/* The perpendicular from P to L: its length is d, and Π(d) is measured from it */}
+          <path d={segmentPath(P, Point.ORIGIN)} fill="none" stroke={palette.inkMuted} strokeWidth={1.25} strokeDasharray="4 3" {...stroke} />
+          <text x={0.03} y={py / 2 + 0.02} fontSize="0.06" fontFamily="'Newsreader Variable', Georgia, serif" fontStyle="italic" fill={palette.inkMuted}>
+            d
+          </text>
 
           <path d={fullLinePath(L)} fill="none" stroke={palette.ink} strokeWidth={3} {...stroke} />
           <path d={fullLinePath(candidate)} fill="none" stroke={VERDICT_COLOR[result.verdict]} strokeWidth={3} {...stroke} />

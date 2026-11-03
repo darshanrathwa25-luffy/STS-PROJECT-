@@ -17,6 +17,8 @@ import { soundManager } from '../utils/audio';
 export type WorldKind = 'flat' | 'sphere' | 'hyperbolic';
 export type LabKind = 'triangle' | 'parallel' | 'disk' | 'reflection';
 export type DiskExploration = 'walk' | 'circles' | 'tiles' | 'polygon';
+/** Tutorial: predict, then a goal, then the explanation. Explorer: everything open. */
+export type LearningMode = 'tutorial' | 'explorer';
 
 /** Disk-lab state, kept as plain numbers (points are rebuilt with the Poincaré engine). */
 export interface DiskState {
@@ -97,6 +99,11 @@ export interface GeometryStoreState {
   isDragging: boolean;
 
   // STS & Discovery Progress
+  mode: LearningMode;
+  /** The option the student predicted, per question id (tutorial mode). */
+  predictions: Record<string, string>;
+  /** Small per-question memory for goals, e.g. "has tilted the line away from level". */
+  goalFlags: Record<string, Record<string, boolean>>;
   solvedQuestions: Record<string, boolean>;
   reflectionText: string;
   soundEnabled: boolean;
@@ -147,6 +154,11 @@ export interface GeometryStoreState {
 
   setParallelState: (updates: Partial<ParallelState>) => void;
   markQuestionSolved: (id: string, solved?: boolean) => void;
+  setMode: (mode: LearningMode) => void;
+  setPrediction: (questionId: string, optionId: string) => void;
+  setGoalFlags: (questionId: string, flags: Record<string, boolean>) => void;
+  /** Forget the prediction, goal progress and discovery for one question, and reset the lab. */
+  restartQuestion: (questionId: string) => void;
   setReflectionText: (text: string) => void;
   setSoundEnabled: (enabled: boolean) => void;
   resetCamera: () => void;
@@ -265,6 +277,9 @@ export const useGeometryStore = create<GeometryStoreState>((set, get) => ({
   selectedVertex: 'p1',
   isDragging: false,
 
+  mode: 'tutorial',
+  predictions: {},
+  goalFlags: {},
   solvedQuestions: {},
   reflectionText: '',
   soundEnabled: false,
@@ -490,6 +505,28 @@ export const useGeometryStore = create<GeometryStoreState>((set, get) => ({
         candidateAngleDeg: next.theta,
       },
     });
+  },
+
+  setMode: (mode) => {
+    soundManager.playTick();
+    set({ mode });
+  },
+
+  setPrediction: (questionId, optionId) => {
+    soundManager.playTick();
+    set((state) => ({ predictions: { ...state.predictions, [questionId]: optionId } }));
+  },
+
+  setGoalFlags: (questionId, flags) => {
+    set((state) => ({ goalFlags: { ...state.goalFlags, [questionId]: { ...state.goalFlags[questionId], ...flags } } }));
+  },
+
+  restartQuestion: (questionId) => {
+    const { [questionId]: _p, ...predictions } = get().predictions;
+    const { [questionId]: _f, ...goalFlags } = get().goalFlags;
+    const { [questionId]: _s, ...solvedQuestions } = get().solvedQuestions;
+    set({ predictions, goalFlags, solvedQuestions });
+    get().resetLab();
   },
 
   markQuestionSolved: (id, solved = true) => {

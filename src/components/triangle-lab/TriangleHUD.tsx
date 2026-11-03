@@ -19,6 +19,17 @@ const WORLD_META: Record<WorldKind, { label: string; curvature: string }> = {
 // The angle bar spans 0°–270°, so 180° sits two-thirds of the way along.
 const BAR_MAX = 270;
 
+/** Side lengths the saddle page accepts; see setWorld in the store. */
+const SADDLE_SIDE_RANGE = [0.3, 1.5] as const;
+
+/** North Pole and two points on the equator a quarter-turn apart: three right angles. */
+const R = DEFAULT_SPHERE_RADIUS;
+const RIGHT_ANGLE_TRIANGLE = {
+  p1: { x: 0, y: R, z: 0 },
+  p2: { x: 0, y: 0, z: R },
+  p3: { x: R, y: 0, z: 0 },
+};
+
 export const TriangleHUD: React.FC = () => {
   const {
     world,
@@ -27,7 +38,14 @@ export const TriangleHUD: React.FC = () => {
     flatTriangle,
     sphereTriangle,
     saddleTriangle: hTri,
+    updateSphereVertex,
+    resetCamera,
   } = useGeometryStore();
+
+  const setRightAngles = () => {
+    (['p1', 'p2', 'p3'] as const).forEach((k) => updateSphereVertex(k, RIGHT_ANGLE_TRIANGLE[k]));
+    resetCamera();
+  };
 
   // Active world measurements
   const activeMeasurements = useMemo(() => {
@@ -83,12 +101,10 @@ export const TriangleHUD: React.FC = () => {
       if (!m.degenerate) sphereSum = m.angleSumDeg;
     }
 
+    // Only sides the saddle page can actually show (it clamps to this range when you switch)
     let hypSum: number | null = null;
-    const hTriConstructed = constructSaddleTriangleFromSides(
-      Math.min(a, 1.5),
-      Math.min(b, 1.5),
-      Math.min(c, 1.5)
-    );
+    const fitsSaddle = [a, b, c].every((x) => x >= SADDLE_SIDE_RANGE[0] && x <= SADDLE_SIDE_RANGE[1]);
+    const hTriConstructed = fitsSaddle ? constructSaddleTriangleFromSides(a, b, c) : null;
     if (hTriConstructed) {
       const m = saddleTriangle(hTriConstructed.a, hTriConstructed.b, hTriConstructed.c);
       if (!m.degenerate) hypSum = m.angleSumDeg;
@@ -186,6 +202,15 @@ export const TriangleHUD: React.FC = () => {
         ))}
       </dl>
 
+      {world === 'sphere' && (
+        <button
+          onClick={setRightAngles}
+          className="mt-4 h-8 px-3 text-[13px] border border-rule text-ink-soft hover:border-rule-strong hover:text-ink transition-colors"
+        >
+          Try: three right angles
+        </button>
+      )}
+
       {/* Same sides, other worlds */}
       <div className="mt-6">
         <h3 className="text-[13px] text-ink-muted">Same side lengths in each world</h3>
@@ -203,7 +228,13 @@ export const TriangleHUD: React.FC = () => {
                   className={`w-full flex items-center gap-2.5 py-2 px-1 text-left text-[14px] transition-colors ${
                     isActive ? 'text-ink' : isPossible ? 'text-ink-soft hover:bg-paper-sunk' : 'text-ink-faint cursor-not-allowed'
                   }`}
-                  title={isPossible ? `Switch to ${label}` : `These side lengths can't close into a triangle on the ${label.toLowerCase()}`}
+                  title={
+                    isPossible
+                      ? `Switch to ${label}`
+                      : item.id === 'hyperbolic'
+                      ? 'These sides are outside what the saddle page can show (0.3 to 1.5)'
+                      : `These side lengths can't close into a triangle on the ${label.toLowerCase()}`
+                  }
                 >
                   <span
                     className="w-2.5 h-2.5 shrink-0"
@@ -212,7 +243,7 @@ export const TriangleHUD: React.FC = () => {
                   />
                   <span className={isActive ? 'font-medium' : ''}>{label}</span>
                   <span className="ml-auto font-mono text-[13px] tabular">
-                    {isPossible ? `${item.sum!.toFixed(1)}°` : 'won’t close'}
+                    {isPossible ? `${item.sum!.toFixed(1)}°` : item.id === 'hyperbolic' ? 'won’t fit' : 'won’t close'}
                   </span>
                   <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-ink' : 'bg-transparent'}`} aria-hidden="true" />
                 </button>

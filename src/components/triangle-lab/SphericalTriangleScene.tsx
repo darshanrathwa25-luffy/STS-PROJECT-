@@ -43,12 +43,15 @@ export const SphericalTriangleScene: React.FC = () => {
 
   // Subdivided spherical patch geometry
   const patchGeometry = useMemo(() => {
-    const N = 12; // subdivision steps
     const positions: number[] = [];
     const indices: number[] = [];
     const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
     const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
     const v3 = new THREE.Vector3(p3.x, p3.y, p3.z);
+    // Flat facets sag below the sphere between their corners, so big triangles need
+    // finer subdivision: aim for facets about 0.12 across, along the longest side.
+    const longest = Math.max(v1.angleTo(v2), v2.angleTo(v3), v3.angleTo(v1)) * R;
+    const N = Math.min(64, Math.max(12, Math.ceil(longest / 0.12)));
 
     const grid: number[][] = [];
     let vertCount = 0;
@@ -65,7 +68,7 @@ export const SphericalTriangleScene: React.FC = () => {
           .addScaledVector(v2, v)
           .addScaledVector(v3, w)
           .normalize()
-          .multiplyScalar(R * 1.002);
+          .multiplyScalar(R * 1.004);
 
         positions.push(pt.x, pt.y, pt.z);
         grid[i][j] = vertCount++;
@@ -205,6 +208,9 @@ export const SphericalTriangleScene: React.FC = () => {
           opacity={0.88}
           side={THREE.DoubleSide}
           depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
       </mesh>
 

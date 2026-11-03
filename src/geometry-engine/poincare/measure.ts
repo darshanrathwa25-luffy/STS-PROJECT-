@@ -4,6 +4,7 @@ import { TAU } from './constants';
 import { Angle } from './angle';
 import { Point } from './point';
 import { Polygon } from './polygon';
+import { Line } from './line';
 
 /** Signed Euclidean area of the vertex polygon; > 0 when the vertices run anticlockwise. */
 function orientation(vertices: Point[]): number {
@@ -32,6 +33,33 @@ export function interiorAngles(vertices: Point[]): number[] {
     const toNext = v.hyperbolicAngleTo(next);
     return ccw ? Angle.normalize(toPrev - toNext) : Angle.normalize(toNext - toPrev);
   });
+}
+
+/** True if p lies on the hyperbolic segment from a to b (within tolerance). */
+function onSegment(p: Point, a: Point, b: Point): boolean {
+  return Math.abs(a.hyperbolicDistanceTo(p) + p.hyperbolicDistanceTo(b) - a.hyperbolicDistanceTo(b)) < 1e-6;
+}
+
+/**
+ * False if any two non-adjacent sides cross. Angles and area are only meaningful
+ * for simple polygons; a "bow tie" gives nonsense.
+ */
+export function isSimplePolygon(vertices: Point[]): boolean {
+  const n = vertices.length;
+  if (n < 4) return true;
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (j === i + 1 || (i === 0 && j === n - 1)) continue; // adjacent sides share a corner
+      const a0 = vertices[i];
+      const a1 = vertices[(i + 1) % n];
+      const b0 = vertices[j];
+      const b1 = vertices[(j + 1) % n];
+      if (a0.equals(a1) || b0.equals(b1)) continue;
+      const x = Line.hyperbolicIntersect(Line.givenTwoPoints(a0, a1), Line.givenTwoPoints(b0, b1));
+      if (x && onSegment(x, a0, a1) && onSegment(x, b0, b1)) return false;
+    }
+  }
+  return true;
 }
 
 export interface PolygonMeasurements {

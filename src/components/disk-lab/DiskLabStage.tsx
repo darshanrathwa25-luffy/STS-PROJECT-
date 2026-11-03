@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useGeometryStore, DiskExploration } from '../../store/geometryStore';
-import { Poincare } from '../../geometry-engine';
-import { WalkFigure, CirclesFigure, TilesFigure, PolygonFigure, tilesAtCorner } from './figures';
+import { WalkFigure, CirclesFigure, TilesFigure, PolygonFigure } from './figures';
 
 /** Hyperbolic length of one step, and the angle of one turn. */
 export const WALK_STEP = 0.25;
@@ -24,7 +23,7 @@ function Kbd({ children }: { children: React.ReactNode }) {
 
 export const DiskLabStage: React.FC = () => {
   const disk = useGeometryStore((s) => s.disk);
-  const { diskWalk, diskTurn, markQuestionSolved, solvedQuestions } = useGeometryStore();
+  const { diskWalk, diskTurn } = useGeometryStore();
   const { exploration } = disk;
 
   // Keyboard walking
@@ -42,23 +41,6 @@ export const DiskLabStage: React.FC = () => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [exploration, diskWalk, diskTurn]);
-
-  // Mark a discovery once the student has actually done the thing the question asks
-  useEffect(() => {
-    const solve = (id: string) => !solvedQuestions[id] && markQuestionSolved(id, true);
-    if (exploration === 'walk') {
-      const d = Poincare.Point.givenCoordinates(disk.walker.x, disk.walker.y).getHyperbolicRadius();
-      if (d >= 4) solve('disk_walk');
-    } else if (exploration === 'circles') {
-      if (disk.circle.r >= 3) solve('disk_circles');
-    } else if (exploration === 'tiles') {
-      const { fit, gap } = tilesAtCorner(disk.tiles.sides, disk.tiles.radius);
-      if (disk.tiles.sides === 6 && fit >= 4 && gap < (0.5 * Math.PI) / 180) solve('disk_tiles');
-    } else if (exploration === 'polygon' && disk.polygon.length >= 3) {
-      const m = Poincare.measurePolygon(disk.polygon.map((v) => Poincare.Point.givenCoordinates(v.x, v.y)));
-      if (m.defect >= Math.PI / 4) solve('disk_polygon');
-    }
-  }, [exploration, disk, solvedQuestions, markQuestionSolved]);
 
   return (
     <div className="absolute inset-0 bg-paper overflow-hidden select-none">

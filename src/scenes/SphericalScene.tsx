@@ -36,6 +36,17 @@ export const SphericalScene: React.FC = () => {
   const R = DEFAULT_SPHERE_RADIUS;
 
 
+  // Circle of latitude through P (35° N), drawn just above the surface
+  const latitudePoints = useMemo(() => {
+    const lat = (35 * Math.PI) / 180;
+    const r = R * Math.cos(lat) * 1.003;
+    const y = R * Math.sin(lat) * 1.003;
+    return Array.from({ length: 97 }, (_, i) => {
+      const t = (i / 96) * 2 * Math.PI;
+      return new THREE.Vector3(r * Math.cos(t), y, r * Math.sin(t));
+    });
+  }, [R]);
+
   // Latitude and longitude guide rings
   const guideRings = useMemo(() => {
     const rings: THREE.Vector3[][] = [];
@@ -213,6 +224,12 @@ export const SphericalScene: React.FC = () => {
 
           <SceneLabel position={[R * 0.75, -0.25, R * 0.72]}>L</SceneLabel>
           <SceneLabel position={[0.3, parallelData.p3D.y + 0.25, parallelData.p3D.z + 0.1]}>P</SceneLabel>
+
+          {/* The circle of latitude through P: never meets the equator, but it isn't a great circle */}
+          <Line points={latitudePoints} color={palette.inkMuted} lineWidth={1.5} dashed dashSize={0.12} gapSize={0.08} />
+          <SceneLabel position={[-R * 0.62, parallelData.p3D.y + 0.12, R * 0.52]}>
+            <span className="not-italic font-sans text-[12px] text-ink-muted whitespace-nowrap">35° N, not a straight line</span>
+          </SceneLabel>
 
           {/* Point P */}
           <mesh position={parallelData.p3D}>

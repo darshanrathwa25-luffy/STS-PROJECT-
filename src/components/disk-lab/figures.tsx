@@ -172,7 +172,8 @@ export const PolygonFigure: React.FC = () => {
   const [drag, setDrag] = useState<number | null>(null);
 
   const points = vertices.map((v) => Point.givenCoordinates(v.x, v.y));
-  const m = points.length >= 3 ? Poincare.measurePolygon(points) : null;
+  const simple = Poincare.isSimplePolygon(points);
+  const m = points.length >= 3 && simple ? Poincare.measurePolygon(points) : null;
 
   const centroid = vertices.reduce((acc, v) => ({ x: acc.x + v.x / vertices.length, y: acc.y + v.y / vertices.length }), { x: 0, y: 0 });
 
@@ -213,7 +214,8 @@ export const PolygonFigure: React.FC = () => {
         <path
           d={polygonPath(points)}
           fill={palette.yellow}
-          fillOpacity={points.length >= 3 ? 0.88 : 0}
+          fillOpacity={points.length >= 3 && simple ? 0.88 : 0}
+          strokeDasharray={simple ? undefined : '5 4'}
           stroke={palette.ink}
           strokeWidth={2}
           strokeLinejoin="round"

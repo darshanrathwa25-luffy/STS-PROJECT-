@@ -24,7 +24,9 @@ const VERDICT_TEXT: Record<ParallelVerdict, string> = {
 
 /** Margin-column controls for the Parallel lab: rotate the line through P and read the verdict. */
 export const ParallelControls: React.FC = () => {
-  const { world, parallelExperiment, setCandidateAngle, setShowFan } = useGeometryStore();
+  const { world, parallelExperiment, setCandidateAngle, setShowFan, mode, solvedQuestions } = useGeometryStore();
+  // In the tutorial, finding the limit is the task, so its shortcut waits until it's found
+  const showLimitSnaps = mode === 'explorer' || solvedQuestions['par_hyperbolic'];
   const { candidateAngleDeg, showFan } = parallelExperiment;
 
   const result = useMemo(
@@ -39,10 +41,10 @@ export const ParallelControls: React.FC = () => {
       ? 'Only the perfectly level line (0°) misses L. Tilt it by any amount and the two lines cross somewhere.'
       : world === 'sphere'
       ? 'Straight lines on a sphere are great circles, and any two of them cross twice, at opposite sides of the globe. Try every angle: none escapes.'
-      : `Every angle between −${limit!.toFixed(1)}° and +${limit!.toFixed(1)}° misses L. Those two edges are the limiting parallels; between them is a whole fan of lines that never meet L.`;
+      : `Every angle between −${limit!.toFixed(1)}° and +${limit!.toFixed(1)}° misses L. Those two edges are the limiting parallels; between them is a whole fan of lines that never meet L. Measured from the dashed perpendicular PL instead, a limiting parallel is at Π(d) = ${result.angleOfParallelismDeg!.toFixed(1)}°: the angle of parallelism, for d = ${result.distance.toFixed(2)}.`;
 
   const snaps: { label: string; value: number }[] = [{ label: 'Level, 0°', value: 0 }];
-  if (limit !== undefined) {
+  if (limit !== undefined && showLimitSnaps) {
     snaps.push(
       { label: `Limit, +${limit.toFixed(1)}°`, value: Math.round(limit * 2) / 2 },
       { label: `−${limit.toFixed(1)}°`, value: -Math.round(limit * 2) / 2 }
@@ -100,6 +102,13 @@ export const ParallelControls: React.FC = () => {
       </div>
 
       <p className="mt-5 text-[14px] leading-relaxed text-ink-soft">{summary}</p>
+      {world === 'hyperbolic' && (
+        <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">
+          The saddle in Chapter I is only a small patch, and its curvature changes from place to place, so it can't
+          show whole straight lines. This page uses the Poincaré disk instead: a map of the entire hyperbolic plane,
+          where the curvature is the same everywhere. Chapter III explores it.
+        </p>
+      )}
 
       <button
         onClick={() => setShowFan(!showFan)}

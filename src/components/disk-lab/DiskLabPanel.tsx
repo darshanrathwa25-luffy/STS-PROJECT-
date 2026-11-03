@@ -251,10 +251,9 @@ const TilesPanel: React.FC = () => {
 const PolygonPanel: React.FC = () => {
   const vertices = useGeometryStore((s) => s.disk.polygon);
   const setDiskPolygon = useGeometryStore((s) => s.setDiskPolygon);
-  const m =
-    vertices.length >= 3
-      ? Poincare.measurePolygon(vertices.map((v) => Poincare.Point.givenCoordinates(v.x, v.y)))
-      : null;
+  const points = vertices.map((v) => Poincare.Point.givenCoordinates(v.x, v.y));
+  const simple = Poincare.isSimplePolygon(points);
+  const m = vertices.length >= 3 && simple ? Poincare.measurePolygon(points) : null;
 
   // Push every corner out towards the rim along its own radius
   const stretch = () =>
@@ -281,6 +280,10 @@ const PolygonPanel: React.FC = () => {
           </dl>
           <p className="mt-3 text-[13px] text-ink-muted">The shortfall and the area are the same number. That's Gauss–Bonnet.</p>
         </>
+      ) : !simple ? (
+        <p className="text-[15px] leading-relaxed text-ink-soft">
+          Two sides cross, so the shape has no proper inside to measure. Drag a corner until the sides stop crossing.
+        </p>
       ) : (
         <p className="text-[15px] leading-relaxed text-ink-soft">
           Click inside the disk to place corners. You need at least three.
