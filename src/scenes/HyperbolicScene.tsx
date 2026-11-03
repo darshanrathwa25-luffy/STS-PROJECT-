@@ -1,6 +1,7 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { useFrame, ThreeEvent } from '@react-three/fiber';
+import { ThreeEvent } from '@react-three/fiber';
+import { Line, Html } from '@react-three/drei';
 import { useGeometryStore } from '../store/geometryStore';
 import {
   computeGeodesicThroughPointAndAngle,
@@ -15,6 +16,12 @@ import {
 } from '../geometry-engine';
 import { palette } from '../theme/palette';
 
+const SceneLabel: React.FC<{ position: [number, number, number]; children: React.ReactNode }> = ({ position, children }) => (
+  <Html position={position} center className="pointer-events-none select-none">
+    <span className="font-serif italic text-[20px] leading-none text-ink">{children}</span>
+  </Html>
+);
+
 export const HyperbolicScene: React.FC = () => {
   const {
     points,
@@ -27,7 +34,7 @@ export const HyperbolicScene: React.FC = () => {
     selectedPointId,
   } = useGeometryStore();
 
-  const { particleCount, pointSize, showGrid, showSurface, showConstruction } = appearance;
+  const { showGrid, showConstruction } = appearance;
   const { candidateAngleDeg, showFan } = parallelExperiment;
 
   const DISK_RADIUS = 3.5;
@@ -51,39 +58,6 @@ export const HyperbolicScene: React.FC = () => {
     return rings;
   }, [DISK_RADIUS]);
 
-  // Particle boundary at infinity |z| = 1
-  const particleGeo = useMemo(() => {
-    const count = Math.min(particleCount, 3000);
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-
-    for (let i = 0; i < count; i++) {
-      const theta = (i / count) * 2 * Math.PI;
-      const r = DISK_RADIUS * (0.995 + Math.random() * 0.01);
-      const x = r * Math.cos(theta);
-      const z = r * Math.sin(theta);
-
-      positions[i * 3] = x;
-      positions[i * 3 + 1] = 0;
-      positions[i * 3 + 2] = z;
-
-      colors[i * 3] = 0.92;
-      colors[i * 3 + 1] = 0.95;
-      colors[i * 3 + 2] = 1.0;
-    }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    return geo;
-  }, [particleCount, DISK_RADIUS]);
-
-  const pointsMatRef = useRef<THREE.PointsMaterial>(null);
-  useFrame(({ clock }) => {
-    if (pointsMatRef.current) {
-      pointsMatRef.current.opacity = 0.65 + Math.sin(clock.getElapsedTime() * 1.5) * 0.05;
-    }
-  });
 
   // Parallel lines experiment data
   const parallelData = useMemo(() => {
@@ -236,25 +210,10 @@ export const HyperbolicScene: React.FC = () => {
         <meshBasicMaterial color={palette.paperRaised} />
       </mesh>
 
-      {/* Particle rim at boundary |z| = 1 */}
-      {showSurface && (
-        <points geometry={particleGeo}>
-          <pointsMaterial
-            ref={pointsMatRef}
-            size={pointSize}
-            vertexColors
-            transparent
-            opacity={0.7}
-            sizeAttenuation
-            depthWrite={false}
-          />
-        </points>
-      )}
-
       {/* Crisp Circular Boundary Rim (r = 1, infinity) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
         <ringGeometry args={[DISK_RADIUS - 0.02, DISK_RADIUS + 0.02, 128]} />
-        <meshBasicMaterial color={palette.blue} transparent opacity={0.85} />
+        <meshBasicMaterial color={palette.ink} transparent opacity={0.7} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
         <ringGeometry args={[DISK_RADIUS + 0.03, DISK_RADIUS + 0.06, 128]} />
@@ -264,17 +223,7 @@ export const HyperbolicScene: React.FC = () => {
       {/* Concentric equal-hyperbolic-distance rings */}
       {showGrid &&
         hyperbolicRings.map((ring, idx) => (
-          <line key={`ring-${idx}`}>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={ring.points.length}
-                array={new Float32Array(ring.points.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color={palette.rule} transparent opacity={0.5} />
-          </line>
+          <Line key={`ring-${idx}`} points={ring.points} color={palette.rule} lineWidth={1} />
         ))}
 
       {/* ============================================================== */}
@@ -283,17 +232,10 @@ export const HyperbolicScene: React.FC = () => {
       {experiment === 'parallel-lines' && parallelData && showConstruction && (
         <group>
           {/* Reference Geodesic L */}
-          <line>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={parallelData.refPoints.length}
-                array={new Float32Array(parallelData.refPoints.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color={palette.ink} linewidth={2} />
-          </line>
+          <Line points={parallelData.refPoints} color={palette.ink} lineWidth={3} />
+
+          <SceneLabel position={[DISK_RADIUS * 0.82, 0.05, -0.3]}>L</SceneLabel>
+          <SceneLabel position={[0.35, 0.05, parallelData.p3D.z + 0.3]}>P</SceneLabel>
 
           {/* External Point P */}
           <mesh position={parallelData.p3D}>
@@ -303,31 +245,11 @@ export const HyperbolicScene: React.FC = () => {
 
           {/* Fan curves */}
           {parallelData.fanCurves.map((fan, idx) => (
-            <line key={idx}>
-              <bufferGeometry>
-                <bufferAttribute
-                  attach="attributes-position"
-                  count={fan.points.length}
-                  array={new Float32Array(fan.points.flatMap((v) => [v.x, v.y, v.z]))}
-                  itemSize={3}
-                />
-              </bufferGeometry>
-              <lineBasicMaterial color={fan.color} transparent opacity={0.35} />
-            </line>
+            <Line key={idx} points={fan.points} color={fan.color} lineWidth={1.4} transparent opacity={0.35} />
           ))}
 
           {/* Active Candidate Geodesic */}
-          <line>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={parallelData.candPoints.length}
-                array={new Float32Array(parallelData.candPoints.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color={parallelData.lineColor} linewidth={2} />
-          </line>
+          <Line points={parallelData.candPoints} color={parallelData.lineColor} lineWidth={3} />
 
           {/* Interior intersection point */}
           {parallelData.intPt3D && (
@@ -353,23 +275,13 @@ export const HyperbolicScene: React.FC = () => {
       {experiment === 'triangle' && showConstruction && (
         <group>
           {triangleArcs.map((arcPts, idx) => (
-            <line key={`tri-arc-${idx}`}>
-              <bufferGeometry>
-                <bufferAttribute
-                  attach="attributes-position"
-                  count={arcPts.length}
-                  array={new Float32Array(arcPts.flatMap((v) => [v.x, v.y, v.z]))}
-                  itemSize={3}
-                />
-              </bufferGeometry>
-              <lineBasicMaterial color={palette.blue} linewidth={2.5} />
-            </line>
+            <Line key={`tri-arc-${idx}`} points={arcPts} color={palette.blue} lineWidth={3} />
           ))}
         </group>
       )}
 
       {/* Draggable / Selectable Points */}
-      {points.map((pt) => {
+      {experiment !== 'parallel-lines' && points.map((pt) => {
         const isSelected = pt.id === selectedPointId;
         return (
           <group key={pt.id} position={[pt.position.x, pt.position.y, pt.position.z]}>

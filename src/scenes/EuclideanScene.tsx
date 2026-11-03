@@ -1,6 +1,7 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { useFrame, ThreeEvent } from '@react-three/fiber';
+import { ThreeEvent } from '@react-three/fiber';
+import { Line, Html } from '@react-three/drei';
 import { useGeometryStore } from '../store/geometryStore';
 import {
   generateEuclideanLine,
@@ -8,6 +9,12 @@ import {
   degToRad,
 } from '../geometry-engine';
 import { palette } from '../theme/palette';
+
+const SceneLabel: React.FC<{ position: [number, number, number]; children: React.ReactNode }> = ({ position, children }) => (
+  <Html position={position} center className="pointer-events-none select-none">
+    <span className="font-serif italic text-[20px] leading-none text-ink">{children}</span>
+  </Html>
+);
 
 export const EuclideanScene: React.FC = () => {
   const {
@@ -19,58 +26,12 @@ export const EuclideanScene: React.FC = () => {
     addPoint,
     selectPoint,
     selectedPointId,
-    updatePoint,
   } = useGeometryStore();
 
-  const { particleCount, pointSize, showGrid, showSurface, showConstruction } = appearance;
+  const { showGrid, showConstruction } = appearance;
   const { candidateAngleDeg, showFan } = parallelExperiment;
 
-  // Particle plane geometry
-  const particleGeo = useMemo(() => {
-    const count = particleCount;
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
 
-    // Regular grid with subtle organic spacing
-    const side = Math.floor(Math.sqrt(count));
-    const extent = 12.0;
-    const step = (extent * 2) / side;
-
-    let idx = 0;
-    for (let i = 0; i < side; i++) {
-      for (let j = 0; j < side; j++) {
-        const x = -extent + i * step + (Math.random() - 0.5) * 0.05;
-        const z = -extent + j * step + (Math.random() - 0.5) * 0.05;
-        const y = 0;
-
-        positions[idx * 3] = x;
-        positions[idx * 3 + 1] = y;
-        positions[idx * 3 + 2] = z;
-
-        // Silver-white with subtle falloff from center
-        const dist = Math.hypot(x, z);
-        const alpha = Math.max(0.2, 1.0 - dist / (extent * 1.2));
-        colors[idx * 3] = 0.88 * alpha;
-        colors[idx * 3 + 1] = 0.92 * alpha;
-        colors[idx * 3 + 2] = 1.0 * alpha;
-
-        idx++;
-      }
-    }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    return geo;
-  }, [particleCount]);
-
-  // Points material ref for subtle pulse
-  const pointsMatRef = useRef<THREE.PointsMaterial>(null);
-  useFrame(({ clock }) => {
-    if (pointsMatRef.current) {
-      pointsMatRef.current.opacity = 0.55 + Math.sin(clock.getElapsedTime() * 1.5) * 0.05;
-    }
-  });
 
   // Parallel lines experiment geometry
   const parallelData = useMemo(() => {
@@ -162,25 +123,10 @@ export const EuclideanScene: React.FC = () => {
         <meshBasicMaterial />
       </mesh>
 
-      {/* Particle plane */}
-      {showSurface && (
-        <points geometry={particleGeo}>
-          <pointsMaterial
-            ref={pointsMatRef}
-            size={pointSize}
-            vertexColors
-            transparent
-            opacity={0.6}
-            sizeAttenuation
-            depthWrite={false}
-          />
-        </points>
-      )}
-
       {/* Coordinate grid */}
       {showGrid && (
         <gridHelper
-          args={[20, 20, 0x3a4254, 0x1a1e28]}
+          args={[20, 20, palette.ruleStrong, palette.rule]}
           position={[0, 0.01, 0]}
         />
       )}
@@ -189,17 +135,10 @@ export const EuclideanScene: React.FC = () => {
       {parallelData && showConstruction && (
         <group>
           {/* Reference Line L */}
-          <line>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={parallelData.refPoints.length}
-                array={new Float32Array(parallelData.refPoints.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color={palette.ink} linewidth={2} />
-          </line>
+          <Line points={parallelData.refPoints} color={palette.ink} lineWidth={3} />
+
+          <SceneLabel position={[5.2, 0.05, -0.45]}>L</SceneLabel>
+          <SceneLabel position={[0.45, 0.05, 2.35]}>P</SceneLabel>
 
           {/* External Point P */}
           <mesh position={parallelData.p3D}>
@@ -215,34 +154,11 @@ export const EuclideanScene: React.FC = () => {
 
           {/* Fan candidate lines */}
           {parallelData.fanLines.map((fanPts, idx) => (
-            <line key={idx}>
-              <bufferGeometry>
-                <bufferAttribute
-                  attach="attributes-position"
-                  count={fanPts.length}
-                  array={new Float32Array(fanPts.flatMap((v) => [v.x, v.y, v.z]))}
-                  itemSize={3}
-                />
-              </bufferGeometry>
-              <lineBasicMaterial color={palette.ruleStrong} transparent opacity={0.35} />
-            </line>
+            <Line key={idx} points={fanPts} color={palette.ruleStrong} lineWidth={1.4} transparent opacity={0.35} />
           ))}
 
           {/* Active Candidate Line */}
-          <line>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={parallelData.candPoints.length}
-                array={new Float32Array(parallelData.candPoints.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial
-              color={parallelData.isParallel ? palette.ochre : palette.red}
-              linewidth={2}
-            />
-          </line>
+          <Line points={parallelData.candPoints} color={parallelData.isParallel ? palette.blue : palette.red} lineWidth={3} />
 
           {/* Intersection marker */}
           {parallelData.intPt3D && (
@@ -257,22 +173,12 @@ export const EuclideanScene: React.FC = () => {
       {/* Triangle experiment visualization */}
       {triangleData && showConstruction && (
         <group>
-          <line>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={triangleData.length}
-                array={new Float32Array(triangleData.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color={palette.blue} linewidth={2} />
-          </line>
+          <Line points={triangleData} color={palette.blue} lineWidth={3} />
         </group>
       )}
 
       {/* User placed points */}
-      {points.map((pt) => {
+      {experiment !== 'parallel-lines' && points.map((pt) => {
         const isSelected = pt.id === selectedPointId;
         return (
           <group key={pt.id} position={[pt.position.x, pt.position.y, pt.position.z]}>

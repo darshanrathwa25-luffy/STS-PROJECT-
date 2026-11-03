@@ -4,6 +4,7 @@ import {
   euclideanTriangle,
   sphericalTriangle,
   saddleTriangle,
+  classifyParallelCandidate,
   DEFAULT_SPHERE_RADIUS,
 } from '../../geometry-engine';
 import { X } from 'lucide-react';
@@ -44,7 +45,7 @@ export const DetailsDrawer: React.FC = () => {
     flatTriangle: fTri,
     sphereTriangle: sTri,
     saddleTriangle: hTri,
-    parallel,
+    parallelExperiment,
     reflectionText,
     setReflectionText,
   } = useGeometryStore();
@@ -103,26 +104,20 @@ export const DetailsDrawer: React.FC = () => {
 
   const parallelData = useMemo(() => {
     if (lab !== 'parallel') return null;
-    const d = parallel.h;
-    const piDeg = deg(2 * Math.atan(Math.exp(-d)));
-    if (world === 'flat') {
-      return [
-        { label: <>Distance from <Var>P</Var> to <Var>L</Var></>, value: d.toFixed(2) },
-        { label: 'Lines through P that miss L', value: 'exactly 1' },
-      ];
-    }
-    if (world === 'sphere') {
-      return [
-        { label: <>Distance from <Var>P</Var> to <Var>L</Var></>, value: d.toFixed(2) },
-        { label: 'Lines through P that miss L', value: 'none' },
-      ];
-    }
-    return [
-      { label: <>Distance from <Var>P</Var> to <Var>L</Var></>, value: d.toFixed(2) },
-      { label: 'Lines through P that miss L', value: 'infinitely many' },
-      { label: <>Angle of parallelism Π(<Var>d</Var>)</>, value: `${piDeg.toFixed(1)}°` },
+    const kind = world === 'flat' ? 'euclidean' : world === 'sphere' ? 'spherical' : 'hyperbolic';
+    const r = classifyParallelCandidate(kind, parallelExperiment.candidateAngleDeg);
+    const rows: Row[] = [
+      { label: <>Distance from <Var>P</Var> to <Var>L</Var></>, value: r.distance.toFixed(2) },
+      {
+        label: 'Lines through P that miss L',
+        value: world === 'flat' ? 'exactly 1' : world === 'sphere' ? 'none' : 'infinitely many',
+      },
     ];
-  }, [world, lab, parallel]);
+    if (r.angleOfParallelismDeg !== undefined) {
+      rows.push({ label: <>Angle of parallelism Π(<Var>d</Var>)</>, value: `${r.angleOfParallelismDeg.toFixed(1)}°` });
+    }
+    return rows;
+  }, [world, lab, parallelExperiment.candidateAngleDeg]);
 
   if (!detailsOpen) return null;
 

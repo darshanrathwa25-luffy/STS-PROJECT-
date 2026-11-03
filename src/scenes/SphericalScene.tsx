@@ -1,6 +1,7 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { useFrame, ThreeEvent } from '@react-three/fiber';
+import { ThreeEvent } from '@react-three/fiber';
+import { Line, Html } from '@react-three/drei';
 import { useGeometryStore } from '../store/geometryStore';
 import {
   DEFAULT_SPHERE_RADIUS,
@@ -9,9 +10,14 @@ import {
   intersectGreatCircles,
   projectToSphere,
   degToRad,
-  sphericalTriangle,
 } from '../geometry-engine';
 import { palette } from '../theme/palette';
+
+const SceneLabel: React.FC<{ position: [number, number, number]; children: React.ReactNode }> = ({ position, children }) => (
+  <Html position={position} center className="pointer-events-none select-none">
+    <span className="font-serif italic text-[20px] leading-none text-ink">{children}</span>
+  </Html>
+);
 
 export const SphericalScene: React.FC = () => {
   const {
@@ -25,48 +31,10 @@ export const SphericalScene: React.FC = () => {
     selectedPointId,
   } = useGeometryStore();
 
-  const { particleCount, pointSize, showGrid, showSurface, showConstruction } = appearance;
+  const { showGrid, showConstruction } = appearance;
   const { candidateAngleDeg, showFan } = parallelExperiment;
   const R = DEFAULT_SPHERE_RADIUS;
 
-  // Fibonacci sphere particle distribution
-  const particleGeo = useMemo(() => {
-    const count = particleCount;
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    const goldenRatio = (1 + Math.sqrt(5)) / 2;
-
-    for (let i = 0; i < count; i++) {
-      const theta = (2 * Math.PI * i) / goldenRatio;
-      const phi = Math.acos(1 - (2 * (i + 0.5)) / count);
-
-      const x = R * Math.sin(phi) * Math.cos(theta);
-      const y = R * Math.cos(phi);
-      const z = R * Math.sin(phi) * Math.sin(theta);
-
-      positions[i * 3] = x;
-      positions[i * 3 + 1] = y;
-      positions[i * 3 + 2] = z;
-
-      // Silver-white with subtle latitude brightness variation
-      const brightness = 0.8 + 0.2 * Math.abs(Math.sin(phi));
-      colors[i * 3] = 0.88 * brightness;
-      colors[i * 3 + 1] = 0.92 * brightness;
-      colors[i * 3 + 2] = 1.0 * brightness;
-    }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    return geo;
-  }, [particleCount, R]);
-
-  const pointsMatRef = useRef<THREE.PointsMaterial>(null);
-  useFrame(({ clock }) => {
-    if (pointsMatRef.current) {
-      pointsMatRef.current.opacity = 0.55 + Math.sin(clock.getElapsedTime() * 1.5) * 0.05;
-    }
-  });
 
   // Latitude and longitude guide rings
   const guideRings = useMemo(() => {
@@ -225,52 +193,26 @@ export const SphericalScene: React.FC = () => {
         <meshBasicMaterial />
       </mesh>
 
-      {/* Particle sphere surface */}
-      {showSurface && (
-        <points geometry={particleGeo}>
-          <pointsMaterial
-            ref={pointsMatRef}
-            size={pointSize}
-            vertexColors
-            transparent
-            opacity={0.65}
-            sizeAttenuation
-            depthWrite={false}
-          />
-        </points>
-      )}
+      {/* Solid paper globe: hides the far side so the lines read clearly */}
+      <mesh>
+        <sphereGeometry args={[R * 0.995, 64, 64]} />
+        <meshStandardMaterial color={palette.paperRaised} emissive={palette.paperSunk} emissiveIntensity={0.55} roughness={1} metalness={0} />
+      </mesh>
 
       {/* Guide rings */}
       {showGrid &&
         guideRings.map((pts, idx) => (
-          <line key={idx}>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={pts.length}
-                array={new Float32Array(pts.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color={palette.rule} transparent opacity={0.4} />
-          </line>
+          <Line key={idx} points={pts} color={palette.rule} lineWidth={1.4} transparent opacity={0.4} />
         ))}
 
       {/* Parallel lines experiment rendering */}
       {parallelData && showConstruction && (
         <group>
           {/* Reference Equator Great Circle */}
-          <line>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={parallelData.refPoints.length}
-                array={new Float32Array(parallelData.refPoints.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color={palette.ink} linewidth={2} />
-          </line>
+          <Line points={parallelData.refPoints} color={palette.ink} lineWidth={3} />
+
+          <SceneLabel position={[R * 0.75, -0.25, R * 0.72]}>L</SceneLabel>
+          <SceneLabel position={[0.3, parallelData.p3D.y + 0.25, parallelData.p3D.z + 0.1]}>P</SceneLabel>
 
           {/* Point P */}
           <mesh position={parallelData.p3D}>
@@ -280,38 +222,18 @@ export const SphericalScene: React.FC = () => {
 
           {/* Fan circles */}
           {parallelData.fanCircles.map((fanPts, idx) => (
-            <line key={idx}>
-              <bufferGeometry>
-                <bufferAttribute
-                  attach="attributes-position"
-                  count={fanPts.length}
-                  array={new Float32Array(fanPts.flatMap((v) => [v.x, v.y, v.z]))}
-                  itemSize={3}
-                />
-              </bufferGeometry>
-              <lineBasicMaterial color={palette.ruleStrong} transparent opacity={0.3} />
-            </line>
+            <Line key={idx} points={fanPts} color={palette.ruleStrong} lineWidth={1.4} transparent opacity={0.3} />
           ))}
 
           {/* Active Candidate Great Circle */}
-          <line>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={parallelData.candPoints.length}
-                array={new Float32Array(parallelData.candPoints.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color={palette.red} linewidth={2} />
-          </line>
+          <Line points={parallelData.candPoints} color={palette.red} lineWidth={3} />
 
           {/* Antipodal intersection points with pulsating rings */}
           {parallelData.intPts3D.map((pt, idx) => (
             <group key={idx} position={pt}>
               <mesh>
-                <sphereGeometry args={[0.07, 16, 16]} />
-                <meshBasicMaterial color={palette.ochre} />
+                <sphereGeometry args={[0.08, 16, 16]} />
+                <meshBasicMaterial color={palette.red} />
               </mesh>
             </group>
           ))}
@@ -321,21 +243,11 @@ export const SphericalScene: React.FC = () => {
       {/* Triangle arcs */}
       {showConstruction &&
         triangleArcs.map((arcPts, idx) => (
-          <line key={idx}>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={arcPts.length}
-                array={new Float32Array(arcPts.flatMap((v) => [v.x, v.y, v.z]))}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color={palette.blue} linewidth={2} />
-          </line>
+          <Line key={idx} points={arcPts} color={palette.blue} lineWidth={3} />
         ))}
 
       {/* User placed points */}
-      {points.map((pt) => {
+      {experiment !== 'parallel-lines' && points.map((pt) => {
         const isSelected = pt.id === selectedPointId;
         return (
           <group key={pt.id} position={[pt.position.x, pt.position.y, pt.position.z]}>

@@ -20,3 +20,6 @@ export * from './hyperbolic/poincareDisk';
 export * from './hyperbolic/geodesics';
 export * from './hyperbolic/intersections';
 export * from './hyperbolic/saddle';
+
+// Parallel lab set-up and classification
+export * from './parallelLab';

@@ -653,3 +653,33 @@ describe('Phase 1b & 1c: Saddle Monge Patch Math & Gaps', () => {
     expect(avgConstruct).toBeLessThan(3.0);
   });
 });
+
+import { classifyParallelCandidate } from '../parallelLab';
+
+describe('Parallel lab classification', () => {
+  it('flat: only the level line misses L', () => {
+    expect(classifyParallelCandidate('euclidean', 0).verdict).toBe('misses');
+    expect(classifyParallelCandidate('euclidean', 5).verdict).toBe('meets');
+    expect(classifyParallelCandidate('euclidean', -30).verdict).toBe('meets');
+  });
+
+  it('sphere: every line through P meets L twice', () => {
+    for (const a of [0, 20, -60]) {
+      const r = classifyParallelCandidate('spherical', a);
+      expect(r.verdict).toBe('meets');
+      expect(r.crossings).toBe(2);
+    }
+  });
+
+  it('hyperbolic: a whole range of angles misses L, bounded by Π(d)', () => {
+    const level = classifyParallelCandidate('hyperbolic', 0);
+    expect(level.verdict).toBe('misses');
+    const limit = level.limitAngleDeg!;
+    expect(limit).toBeGreaterThan(0);
+    expect(level.angleOfParallelismDeg! + limit).toBeCloseTo(90, 6);
+    expect(classifyParallelCandidate('hyperbolic', limit * 0.5).verdict).toBe('misses');
+    expect(classifyParallelCandidate('hyperbolic', -limit * 0.5).verdict).toBe('misses');
+    expect(classifyParallelCandidate('hyperbolic', limit).verdict).toBe('limiting');
+    expect(classifyParallelCandidate('hyperbolic', Math.min(85, limit + 15)).verdict).toBe('meets');
+  });
+});
