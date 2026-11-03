@@ -10,6 +10,11 @@ import {
   DEFAULT_SADDLE_C,
   DEFAULT_SADDLE_DOMAIN,
 } from '../../geometry-engine';
+import type { Point3D } from '../../geometry-engine';
+
+// The engine returns saddle points as {x: u, y: v, z: height}. The scene is
+// y-up (camera, drag plane, labels), so map height -> y and v -> z.
+const toScene = (p: Point3D): [number, number, number] => [p.x, p.z, p.y];
 
 export const SaddleTriangleScene: React.FC = () => {
   const {
@@ -24,7 +29,7 @@ export const SaddleTriangleScene: React.FC = () => {
   const [activeDrag, setActiveDrag] = useState<'p1' | 'p2' | 'p3' | null>(null);
 
   const c = DEFAULT_SADDLE_C;
-  const domain = DEFAULT_SADDLE_DOMAIN; // 1.8
+  const domain = DEFAULT_SADDLE_DOMAIN;
   const { p1, p2, p3 } = hTri;
 
   // Live measurements
@@ -37,9 +42,9 @@ export const SaddleTriangleScene: React.FC = () => {
   const edgeBC = useMemo(() => saddleGeodesicPoints3D(p2, p3, 40, c), [p2, p3, c]);
   const edgeCA = useMemo(() => saddleGeodesicPoints3D(p3, p1, 40, c), [p3, p1, c]);
 
-  const edgeAB_pts = useMemo(() => edgeAB.map((p) => [p.x, p.y + 0.005, p.z] as [number, number, number]), [edgeAB]);
-  const edgeBC_pts = useMemo(() => edgeBC.map((p) => [p.x, p.y + 0.005, p.z] as [number, number, number]), [edgeBC]);
-  const edgeCA_pts = useMemo(() => edgeCA.map((p) => [p.x, p.y + 0.005, p.z] as [number, number, number]), [edgeCA]);
+  const edgeAB_pts = useMemo(() => edgeAB.map((p) => { const [x, y, z] = toScene(p); return [x, y + 0.005, z] as [number, number, number]; }), [edgeAB]);
+  const edgeBC_pts = useMemo(() => edgeBC.map((p) => { const [x, y, z] = toScene(p); return [x, y + 0.005, z] as [number, number, number]; }), [edgeBC]);
+  const edgeCA_pts = useMemo(() => edgeCA.map((p) => { const [x, y, z] = toScene(p); return [x, y + 0.005, z] as [number, number, number]; }), [edgeCA]);
 
   // Saddle surface mesh geometry
   const saddleMeshGeo = useMemo(() => {
@@ -52,8 +57,7 @@ export const SaddleTriangleScene: React.FC = () => {
       const u = -extent + (2 * extent * i) / steps;
       for (let j = 0; j <= steps; j++) {
         const v = -extent + (2 * extent * j) / steps;
-        const pt = saddlePosition(u, v, c);
-        positions.push(pt.x, pt.y, pt.z);
+        positions.push(...toScene(saddlePosition(u, v, c)));
       }
     }
 
@@ -95,18 +99,18 @@ export const SaddleTriangleScene: React.FC = () => {
 
         const uVal = uFrac * p1.x + vFrac * p2.x + wFrac * p3.x;
         const vVal = uFrac * p1.y + vFrac * p2.y + wFrac * p3.y;
-        const pos = saddlePosition(uVal, vVal, c);
+        const [px, py, pz] = toScene(saddlePosition(uVal, vVal, c));
 
-        // Slight normal offset to prevent z-fighting
+        // Slight normal offset (scene coordinates, y-up) to prevent z-fighting
         const W = Math.sqrt(1 + 4 * c * c * (uVal * uVal + vVal * vVal));
         const nx = (-2 * c * uVal) / W;
         const ny = 1 / W;
         const nz = (2 * c * vVal) / W;
 
         positions.push(
-          pos.x + nx * 0.006,
-          pos.y + ny * 0.006,
-          pos.z + nz * 0.006
+          px + nx * 0.006,
+          py + ny * 0.006,
+          pz + nz * 0.006
         );
         grid[i][j] = vertCount++;
       }
@@ -151,7 +155,7 @@ export const SaddleTriangleScene: React.FC = () => {
 
     const intersect = new THREE.Vector3();
     if (raycaster.ray.intersectPlane(dragPlane, intersect)) {
-      // In saddle coordinates: u = x, v = z
+      // Scene x = u, scene z = v (see toScene)
       const u = Math.max(-domain, Math.min(domain, intersect.x));
       const v = Math.max(-domain, Math.min(domain, intersect.z));
       updateSaddleVertex(activeDrag, { x: u, y: v });
@@ -225,8 +229,9 @@ export const SaddleTriangleScene: React.FC = () => {
         const isSelected = selectedVertex === key;
         const isDraggingThis = activeDrag === key;
 
+        const [hx, hy, hz] = toScene(pos);
         return (
-          <group key={key} position={[pos.x, pos.y + 0.02, pos.z]}>
+          <group key={key} position={[hx, hy + 0.02, hz]}>
             {/* Visual Handle Sphere */}
             <mesh
               onPointerDown={(e) => handlePointerDown(key, e)}
