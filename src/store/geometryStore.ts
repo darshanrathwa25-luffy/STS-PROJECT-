@@ -10,11 +10,30 @@ import {
   sphericalTriangle,
   saddleTriangle,
   DEFAULT_SPHERE_RADIUS,
+  Poincare,
 } from '../geometry-engine';
 import { soundManager } from '../utils/audio';
 
 export type WorldKind = 'flat' | 'sphere' | 'hyperbolic';
-export type LabKind = 'triangle' | 'parallel';
+export type LabKind = 'triangle' | 'parallel' | 'disk' | 'reflection';
+export type DiskExploration = 'walk' | 'circles' | 'tiles' | 'polygon';
+
+/** Disk-lab state, kept as plain numbers (points are rebuilt with the Poincaré engine). */
+export interface DiskState {
+  exploration: DiskExploration;
+  /** Walker position in the disk and the direction it faces (radians). */
+  walker: { x: number; y: number; heading: number };
+  /** Every position the walker has stood on, oldest first. */
+  trail: { x: number; y: number }[];
+  /** Hyperbolic distance walked so far. */
+  walked: number;
+  /** Circle centre in the disk and hyperbolic radius. */
+  circle: { cx: number; cy: number; r: number };
+  /** Regular polygon: number of sides and hyperbolic circumradius. */
+  tiles: { sides: number; radius: number };
+  /** Vertices of the free polygon, in the disk. */
+  polygon: { x: number; y: number }[];
+}
 export type AppMode = 'explore' | 'compare';
 
 // Legacy compatibility types
@@ -69,6 +88,9 @@ export interface GeometryStoreState {
 
   // Parallel Lines Lab State
   parallel: ParallelState;
+
+  // Poincaré disk lab
+  disk: DiskState;
 
   // Active interaction & selection
   selectedVertex: 'p1' | 'p2' | 'p3' | null;
@@ -130,6 +152,17 @@ export interface GeometryStoreState {
   resetCamera: () => void;
   resetLab: () => void;
 
+  // Disk lab and guided path
+  setDiskExploration: (exploration: DiskExploration) => void;
+  diskWalk: (distance: number) => void;
+  diskTurn: (radians: number) => void;
+  resetDiskWalk: () => void;
+  setDiskCircle: (updates: Partial<DiskState['circle']>) => void;
+  setDiskTiles: (updates: Partial<DiskState['tiles']>) => void;
+  setDiskPolygon: (points: DiskState['polygon']) => void;
+  /** Open a stop on the guided path: switches lab, world and exploration together. */
+  goToStep: (step: { lab: LabKind; world?: WorldKind; exploration?: DiskExploration }) => void;
+
   // Compatibility actions
   setGeometry: (geo: GeometryKind) => void;
   setExperiment: (exp: ExperimentId) => void;
@@ -172,6 +205,23 @@ const INITIAL_SADDLE_TRIANGLE = {
   p3: { x: 0.5, y: 0.8 },
 };
 
+const INITIAL_DISK: DiskState = {
+  exploration: 'walk',
+  walker: { x: 0, y: 0, heading: 0 },
+  trail: [{ x: 0, y: 0 }],
+  walked: 0,
+  circle: { cx: 0, cy: 0, r: 1 },
+  tiles: { sides: 6, radius: 0.3 },
+  polygon: [
+    { x: -0.35, y: -0.25 },
+    { x: 0.4, y: -0.3 },
+    { x: 0.05, y: 0.45 },
+  ],
+};
+
+/** How far out the walker may go; beyond this the map position is indistinguishable from the rim. */
+export const DISK_WALK_LIMIT = 8;
+
 function worldToGeometryKind(world: WorldKind): GeometryKind {
   if (world === 'flat') return 'euclidean';
   if (world === 'sphere') return 'spherical';
@@ -189,7 +239,7 @@ export const useGeometryStore = create<GeometryStoreState>((set, get) => ({
   world: 'flat',
   lab: 'triangle',
   appMode: 'explore',
-  isLanding: false,
+  isLanding: true,
   detailsOpen: false,
 
   sides: DEFAULT_SIDES,
@@ -209,6 +259,8 @@ export const useGeometryStore = create<GeometryStoreState>((set, get) => ({
     classificationType: 'unique',
     details: 'Through point P, exactly one line never intersects L.',
   },
+
+  disk: INITIAL_DISK,
 
   selectedVertex: 'p1',
   isDragging: false,
@@ -482,9 +534,69 @@ export const useGeometryStore = create<GeometryStoreState>((set, get) => ({
         classificationType: 'unique',
         details: 'Through point P, exactly one line never intersects L.',
       },
+      parallelExperiment: { ...get().parallelExperiment, theta: 0, showFan: false, candidateAngleDeg: 0 },
+      disk: { ...INITIAL_DISK, exploration: get().disk.exploration },
       cameraResetSeq: get().cameraResetSeq + 1,
     });
     get().loadExperiment(get().experiment);
+  },
+
+  setDiskExploration: (exploration) => {
+    soundManager.playTick();
+    set({ disk: { ...get().disk, exploration } });
+  },
+
+  diskWalk: (distance) => {
+    const { disk } = get();
+    const here = Poincare.Point.givenCoordinates(disk.walker.x, disk.walker.y);
+    if (here.getHyperbolicRadius() >= DISK_WALK_LIMIT && distance > 0) {
+      // Facing outward beyond the limit: only allow steps that come back in
+      const ahead = here.hyperbolicDistantPoint(distance, disk.walker.heading);
+      if (ahead.getHyperbolicRadius() >= here.getHyperbolicRadius()) return;
+    }
+    const next = here.hyperbolicDistantPoint(distance, disk.walker.heading);
+    const x = next.getX();
+    const y = next.getY();
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    set({
+      disk: {
+        ...disk,
+        walker: { x, y, heading: next.getDirection() },
+        trail: [...disk.trail, { x, y }].slice(-400),
+        walked: disk.walked + Math.abs(distance),
+      },
+    });
+  },
+
+  diskTurn: (radians) => {
+    const { disk } = get();
+    set({ disk: { ...disk, walker: { ...disk.walker, heading: Poincare.Angle.normalize(disk.walker.heading + radians) } } });
+  },
+
+  resetDiskWalk: () => {
+    const { disk } = get();
+    set({ disk: { ...disk, walker: INITIAL_DISK.walker, trail: INITIAL_DISK.trail, walked: 0 } });
+  },
+
+  setDiskCircle: (updates) => {
+    const { disk } = get();
+    set({ disk: { ...disk, circle: { ...disk.circle, ...updates } } });
+  },
+
+  setDiskTiles: (updates) => {
+    const { disk } = get();
+    set({ disk: { ...disk, tiles: { ...disk.tiles, ...updates } } });
+  },
+
+  setDiskPolygon: (polygon) => {
+    set({ disk: { ...get().disk, polygon } });
+  },
+
+  goToStep: ({ lab, world, exploration }) => {
+    if (world && world !== get().world) get().setWorld(world);
+    if (lab !== get().lab) get().setLab(lab);
+    if (exploration && exploration !== get().disk.exploration) get().setDiskExploration(exploration);
+    set({ isLanding: false });
   },
 
   // Compatibility implementations

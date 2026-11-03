@@ -13,6 +13,7 @@ const worlds: { id: WorldKind; label: string; curvature: string }[] = [
 const labs: { id: LabKind; label: string; title: string }[] = [
   { id: 'triangle', label: 'Triangles', title: 'Triangle lab: angle sums and curvature' },
   { id: 'parallel', label: 'Parallels', title: "Parallel lines lab: Euclid's fifth postulate" },
+  { id: 'disk', label: 'Disk', title: 'The whole hyperbolic plane on the Poincaré disk' },
 ];
 
 const iconButton =
@@ -35,7 +36,13 @@ export const TopBar: React.FC = () => {
   } = useGeometryStore();
 
   const worldSwitcher = (fill = false) =>
-    appMode !== 'compare' ? (
+    lab === 'disk' ? (
+      <div className={`flex items-center justify-center gap-2 h-9 text-[13px] text-ink-soft ${fill ? 'w-full' : ''}`}>
+        <span className="w-2.5 h-2.5" style={{ background: worldColor.hyperbolic }} aria-hidden="true" />
+        Poincaré disk
+        <span className="font-mono text-[11px] text-ink-muted">K = −1</span>
+      </div>
+    ) : lab === 'reflection' ? null : appMode !== 'compare' ? (
       <nav
         aria-label="Geometry World Selector"
         className={`flex items-center rounded-lg border border-rule bg-paper-raised p-0.5 ${fill ? 'w-full' : ''}`}

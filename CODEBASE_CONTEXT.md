@@ -109,6 +109,7 @@ Pure TypeScript, no DOM/React/Three. Barrel: `index.ts`. Core types in `shared/t
   - `constructSaddleTriangleFromSides(a,b,c)`: A at origin, B on x-axis at geodesic distance c (`invertXAxis`), C by secant search on shooting angle; returns `null` if infeasible/outside domain.
   - `saddleTriangle(p1,p2,p3)` returns `SaddleTriangleMeasurements` with 3D edges, angles, `defectDeg`, and a Gauss–Bonnet cross-check (`integralKdA`, `defectFromIntegral`, `gaussBonnetDiscrepancy`). Out-of-domain / coincident / collinear → `degenerate: true`.
   - Note: `saddleTriangle` returns `sides` as a **tuple** `[a,b,c]`, whereas Euclidean/spherical return `.a .b .c`.
+- **Poincaré port (`poincare/`)** — TypeScript port of the geometry core of [hyperbolic-canvas](https://github.com/ItsNickBarry/hyperbolic-canvas) (Nick Barry, MIT; `LICENSE` must stay in the folder). Classes `Point`, `Line`, `Circle`, `Polygon`, `Angle`, exported from the barrel as the `Poincare` namespace. Adds what `hyperbolic/` lacks: hyperbolic circles (centre + radius, area, circumference), regular and ideal polygons, walking a distance along a geodesic (`hyperbolicDistantPoint`), boundary points. Upstream's 237 tests are ported under `poincare/__tests__/` (seeded random; `SEED=` to vary), plus `crossCheck.test.ts` comparing it with `hyperbolic/` and with `parallelLab.ts`. `measure.ts` (ours, not upstream) adds polygon angles/area and regular-polygon corner angles. Used by the disk lab and the saddle Parallels view. See `poincare/README.md`.
 - **Shared** — `numerical.ts` (clamp, Newton helpers), `vectors.ts`, `circleMetrics.ts`, `triangleConstruction.ts` (`constructTriangleFromSides(kind,a,b,c[,R])`, `angleSumsForSides`).
 
 ## 6. UI components
@@ -130,9 +131,17 @@ Pure TypeScript, no DOM/React/Three. Barrel: `index.ts`. Core types in `shared/t
 - `geometry/GeometryCanvas` → `scenes/EuclideanScene | SphericalScene | HyperbolicScene`; `experiments/ParallelLinesExperiment`, `TriangleExperiment`, `GuidedExperimentFrame` are legacy compat UIs. The roadmap (older doc) says a future "Phase 4a" replaces the hyperbolic parallel scene with a 2D Poincaré-disk SVG.
 - `components/sts/CaseStudyNavigation`, `CaseStudyGravity`, `StsReflectionBox` exist. **Not verified** whether they are mounted anywhere in the current `AppShell` flow — `AppShell` does not render them directly; check `LandingScreen` / `GeometryCanvas` / `experiments/*` before assuming they are reachable. Store fields `appSection`, `activeStsCaseStudy` ('history'|'navigation'|'gravity'|'models') are leftovers from that earlier navigation.
 
+## 6b. Guided path, disk lab and content (added Nov 2026)
+
+- **Content lives in `src/content/`**: `questions.ts` (every question, hint, reveal and the short `finding` shown in the findings table) and `chapters.ts` (five chapters, and `STEPS`, the ordered stops on the path). Edit lesson text there, not in components.
+- **Chapters**: I Euclid's world (flat triangles, parallels) · II Curving outward (sphere) · III Curving both ways (saddle) · IV A map of an infinite world (disk: walk, circles, tiles, polygons) · V So what shape is space? (`ReflectionPage`). `ChapterStrip` (under `TopBar`) shows numerals and Back/Next; the current step is derived from `lab` + `world` + `disk.exploration`, so manual tab switching stays in sync. The landing page has a Contents list and is the default entry (`isLanding: true`).
+- **Disk lab** (`lab: 'disk'`): `components/disk-lab/` (`DiskLabStage`, `DiskLabPanel`, `figures.tsx`) drawn with `components/poincare/` (`PoincareDisk` SVG + path builders replacing upstream `canvas.js`). State is the store's `disk` slice (plain numbers; points rebuilt with `Poincare`). Discoveries auto-solve when the student does the thing the question asks.
+- **Parallels, saddle world** now renders `geometry/ParallelDiskView` (2D disk) instead of the removed `scenes/HyperbolicScene`.
+- `FindingsTable` (Notes drawer and Chapter V) fills from `solvedQuestions`. `Credits` (landing, Notes, Chapter V) credits hyperbolic-canvas (MIT); keep it.
+
 ## 7. State: `store/geometryStore.ts`
 
-Single Zustand store `useGeometryStore`. Types: `WorldKind = 'flat'|'sphere'|'hyperbolic'`, `LabKind = 'triangle'|'parallel'`, `AppMode = 'explore'|'compare'`.
+Single Zustand store `useGeometryStore`. Types: `WorldKind = 'flat'|'sphere'|'hyperbolic'`, `LabKind = 'triangle'|'parallel'|'disk'|'reflection'`, `DiskExploration = 'walk'|'circles'|'tiles'|'polygon'`, `AppMode = 'explore'|'compare'`.
 
 Main state: `world`, `lab`, `appMode`, `isLanding` (default false), `detailsOpen`, `sides` (default `{1.2,1.2,1.2}`), `sizeScale`, `driver`, `flatTriangle`/`sphereTriangle`/`saddleTriangle`, `parallel` (θ, h=1.2, showFan, fanCount, verdict…), `selectedVertex` (default `'p1'`), `isDragging`, `solvedQuestions`, `reflectionText`, `soundEnabled` (default false), `orbitSensitivity`, `cameraResetSeq`.
 

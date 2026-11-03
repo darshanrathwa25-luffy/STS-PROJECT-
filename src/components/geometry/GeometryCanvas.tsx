@@ -5,7 +5,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useGeometryStore } from '../../store/geometryStore';
 import { EuclideanScene } from '../../scenes/EuclideanScene';
 import { SphericalScene } from '../../scenes/SphericalScene';
-import { HyperbolicScene } from '../../scenes/HyperbolicScene';
+import { ParallelDiskView } from './ParallelDiskView';
 import { palette } from '../../theme/palette';
 
 export const GeometryCanvas: React.FC = () => {
@@ -31,6 +31,11 @@ export const GeometryCanvas: React.FC = () => {
       controlsRef.current.update();
     }
   }, [cameraResetSeq, world]);
+
+  // The hyperbolic plane is shown flat, on the Poincaré disk
+  if (world === 'hyperbolic') {
+    return <ParallelDiskView />;
+  }
 
   return (
     <div className="relative w-full h-full bg-paper overflow-hidden select-none">
@@ -63,7 +68,6 @@ export const GeometryCanvas: React.FC = () => {
         {/* Active World Geometry Scene */}
         {world === 'flat' && <EuclideanScene />}
         {world === 'sphere' && <SphericalScene />}
-        {world === 'hyperbolic' && <HyperbolicScene />}
       </Canvas>
     </div>
   );

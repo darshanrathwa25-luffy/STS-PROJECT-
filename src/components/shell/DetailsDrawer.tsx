@@ -9,6 +9,8 @@ import {
 } from '../../geometry-engine';
 import { X } from 'lucide-react';
 import { worldColor } from '../../theme/palette';
+import { FindingsTable } from './FindingsTable';
+import { Credits } from './Credits';
 
 const deg = (rad: number) => (rad * 180) / Math.PI;
 
@@ -185,6 +187,22 @@ export const DetailsDrawer: React.FC = () => {
             </section>
           )}
 
+          {lab === 'disk' && (
+            <section className="space-y-3">
+              <Heading>Reading the disk</Heading>
+              <p className="text-[14px] leading-relaxed text-ink-soft">
+                The disk is a map of the whole hyperbolic plane, with curvature <Var>K</Var> = −1 everywhere. Like a world
+                map it distorts: angles are drawn true, but lengths shrink towards the rim, and the rim itself is
+                infinitely far away. Straight lines appear as diameters or as arcs that meet the rim at right angles.
+              </p>
+            </section>
+          )}
+
+          <section className="space-y-3">
+            <Heading>What you've found</Heading>
+            <FindingsTable />
+          </section>
+
           <section className="space-y-3">
             <Heading>Why it mattered</Heading>
             <p className="text-[14px] leading-relaxed text-ink-soft">
@@ -211,6 +229,11 @@ export const DetailsDrawer: React.FC = () => {
               placeholder="The sum went past 190° once the triangle covered…"
               className="w-full h-32 bg-paper border border-rule p-3 text-[14px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none focus:border-ink resize-y select-text"
             />
+          </section>
+
+          <section className="space-y-2 pb-2">
+            <Heading>Credits</Heading>
+            <Credits />
           </section>
         </div>
       </div>

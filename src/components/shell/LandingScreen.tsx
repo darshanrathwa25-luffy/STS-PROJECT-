@@ -3,6 +3,8 @@ import { useGeometryStore, WorldKind } from '../../store/geometryStore';
 import { ArrowRight } from 'lucide-react';
 import { palette, worldColor } from '../../theme/palette';
 import { ByrneMark } from './ByrneMark';
+import { Credits } from './Credits';
+import { CHAPTERS, STEPS, firstStepOfChapter } from '../../content/chapters';
 
 // Fig. 1: one triangle drawn three ways. Vertices are shared; only the edges change.
 // Sphere edges bow outward (excess), saddle edges bow inward (defect).
@@ -41,7 +43,7 @@ const FIGURES: {
 ];
 
 export const LandingScreen: React.FC = () => {
-  const { setIsLanding, setWorld, setLab } = useGeometryStore();
+  const { setIsLanding, setWorld, setLab, goToStep } = useGeometryStore();
 
   const startWith = (world: WorldKind) => {
     setWorld(world);
@@ -82,10 +84,10 @@ export const LandingScreen: React.FC = () => {
 
             <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
               <button
-                onClick={() => startWith('flat')}
+                onClick={() => goToStep(STEPS[0])}
                 className="inline-flex items-center gap-2 h-11 px-5 bg-ink text-paper text-[15px] font-medium hover:bg-ink-soft transition-colors"
               >
-                Start with a flat triangle
+                Begin at chapter I
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button
@@ -138,10 +140,36 @@ export const LandingScreen: React.FC = () => {
           </figure>
         </main>
 
+        <section aria-labelledby="contents-heading" className="pb-14">
+          <h2 id="contents-heading" className="font-serif text-[30px] text-ink">
+            Contents
+          </h2>
+          <ol className="mt-5 border-t border-ink">
+            {CHAPTERS.map((c) => (
+              <li key={c.number} className="border-b border-rule">
+                <button
+                  onClick={() => goToStep(STEPS[firstStepOfChapter(c.number)])}
+                  className="group w-full grid grid-cols-[3rem_minmax(0,1fr)_auto] sm:grid-cols-[4rem_minmax(0,1fr)_auto] items-baseline gap-3 py-5 text-left hover:bg-paper-raised transition-colors"
+                >
+                  <span className="font-serif text-[24px] text-ink-muted pl-1">{c.numeral}</span>
+                  <span>
+                    <span className="block font-serif text-[23px] leading-tight text-ink">{c.title}</span>
+                    <span className="block mt-1 text-[15px] leading-relaxed text-ink-soft">{c.summary}</span>
+                  </span>
+                  <ArrowRight className="w-4 h-4 mr-2 text-ink-muted transition-transform group-hover:translate-x-0.5 group-hover:text-ink" />
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <footer className="py-6 border-t border-rule flex flex-col sm:flex-row gap-2 justify-between text-[13px] text-ink-muted">
           <span>Made for a Science, Technology and Society course.</span>
           <span>Euclid · Gauss · Lobachevsky · Bolyai · Riemann</span>
         </footer>
+        <div className="pb-8">
+          <Credits />
+        </div>
       </div>
     </div>
   );
