@@ -10,7 +10,6 @@ if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
 
-// Simple static file server for dist
 const mimeTypes = {
   '.html': 'text/html',
   '.js': 'text/javascript',
@@ -63,56 +62,60 @@ async function run() {
     try {
       browser = await chromium.launch({ channel: 'msedge', headless: true });
     } catch (e) {
-      console.log('Could not launch msedge channel, falling back to default chromium:', e.message);
       browser = await chromium.launch({ headless: true });
     }
 
     const context = await browser.newContext();
 
-    // 1. Desktop Shell View (1440x900)
-    console.log('Capturing Desktop Shell...');
+    // 1. Triangle Lab - Flat World (1440x900)
+    console.log('Capturing Triangle Lab (Flat World)...');
     const page = await context.newPage();
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('http://127.0.0.1:4173', { waitUntil: 'load' });
     await page.waitForTimeout(2000);
-    await page.screenshot({ path: path.join(outDir, 'shell-desktop-flat.png') });
+    await page.screenshot({ path: path.join(outDir, 'triangle-flat-desktop.png') });
 
-    // 2. Details Open
+    // 2. Triangle Lab - Details Open
     console.log('Capturing Details Drawer...');
     const detailsBtn = page.getByRole('button', { name: /details/i });
     if (await detailsBtn.count() > 0) {
       await detailsBtn.first().click();
       await page.waitForTimeout(600);
-      await page.screenshot({ path: path.join(outDir, 'shell-desktop-details.png') });
+      await page.screenshot({ path: path.join(outDir, 'triangle-details-desktop.png') });
+      const closeBtn = page.getByRole('button', { name: /close details panel/i });
+      if (await closeBtn.count() > 0) {
+        await closeBtn.first().click();
+        await page.waitForTimeout(400);
+      }
     }
 
-    // 3. Switch to Hyperbolic World
-    console.log('Capturing Hyperbolic World...');
-    const hypBtn = page.getByRole('button', { name: /hyperbolic/i });
+    // 3. Triangle Lab - Sphere World
+    console.log('Capturing Triangle Lab (Sphere World)...');
+    const sphereBtn = page.getByRole('button', { name: /^sphere/i });
+    if (await sphereBtn.count() > 0) {
+      await sphereBtn.first().click();
+      await page.waitForTimeout(1000);
+      await page.screenshot({ path: path.join(outDir, 'triangle-sphere-desktop.png') });
+    }
+
+    // 4. Triangle Lab - Hyperbolic Saddle World
+    console.log('Capturing Triangle Lab (Saddle World)...');
+    const hypBtn = page.getByRole('button', { name: /^hyperbolic/i });
     if (await hypBtn.count() > 0) {
       await hypBtn.first().click();
-      await page.waitForTimeout(600);
-      await page.screenshot({ path: path.join(outDir, 'shell-desktop-hyperbolic.png') });
+      await page.waitForTimeout(1000);
+      await page.screenshot({ path: path.join(outDir, 'triangle-saddle-desktop.png') });
     }
 
-    // 4. Return to Landing Screen
-    console.log('Capturing Landing Screen...');
-    const brandBtn = page.getByRole('button', { name: /curvature lab/i });
-    if (await brandBtn.count() > 0) {
-      await brandBtn.first().click();
-      await page.waitForTimeout(600);
-      await page.screenshot({ path: path.join(outDir, 'landing-desktop.png') });
-    }
-
-    // 5. Mobile Viewport (390x844)
-    console.log('Capturing Mobile Shell...');
+    // 5. Mobile Viewport (390x844) - Flat Triangle
+    console.log('Capturing Mobile Triangle View...');
     const mobilePage = await context.newPage();
     await mobilePage.setViewportSize({ width: 390, height: 844 });
     await mobilePage.goto('http://127.0.0.1:4173', { waitUntil: 'load' });
     await mobilePage.waitForTimeout(1500);
-    await mobilePage.screenshot({ path: path.join(outDir, 'shell-mobile.png') });
+    await mobilePage.screenshot({ path: path.join(outDir, 'triangle-flat-mobile.png') });
 
-    console.log('All screenshots captured successfully!');
+    console.log('Phase 3a screenshots captured successfully!');
   } catch (err) {
     console.error('Error during screenshot capture:', err);
   } finally {

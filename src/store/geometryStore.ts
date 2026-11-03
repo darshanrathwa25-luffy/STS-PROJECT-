@@ -70,6 +70,10 @@ export interface GeometryStoreState {
   // Parallel Lines Lab State
   parallel: ParallelState;
 
+  // Active interaction & selection
+  selectedVertex: 'p1' | 'p2' | 'p3' | null;
+  isDragging: boolean;
+
   // STS & Discovery Progress
   solvedQuestions: Record<string, boolean>;
   reflectionText: string;
@@ -114,6 +118,10 @@ export interface GeometryStoreState {
   updateFlatVertex: (vertex: 'p1' | 'p2' | 'p3', pos: Point2D) => void;
   updateSphereVertex: (vertex: 'p1' | 'p2' | 'p3', pos: Point3D) => void;
   updateSaddleVertex: (vertex: 'p1' | 'p2' | 'p3', pos: Point2D) => void;
+  setSelectedVertex: (v: 'p1' | 'p2' | 'p3' | null) => void;
+  setIsDragging: (isDragging: boolean) => void;
+  cycleSelectedVertex: (reverse?: boolean) => void;
+  nudgeSelectedVertex: (dx: number, dy: number) => void;
 
   setParallelState: (updates: Partial<ParallelState>) => void;
   markQuestionSolved: (id: string, solved?: boolean) => void;
@@ -201,6 +209,9 @@ export const useGeometryStore = create<GeometryStoreState>((set, get) => ({
     classificationType: 'unique',
     details: 'Through point P, exactly one line never intersects L.',
   },
+
+  selectedVertex: 'p1',
+  isDragging: false,
 
   solvedQuestions: {},
   reflectionText: '',
@@ -371,6 +382,49 @@ export const useGeometryStore = create<GeometryStoreState>((set, get) => ({
       sides: { a: tri.sides[0], b: tri.sides[1], c: tri.sides[2] },
       driver: 'hyperbolic',
     });
+  },
+
+  setSelectedVertex: (selectedVertex) => set({ selectedVertex }),
+
+  setIsDragging: (isDragging) => set({ isDragging }),
+
+  cycleSelectedVertex: (reverse = false) => {
+    const cur = get().selectedVertex || 'p1';
+    const order: ('p1' | 'p2' | 'p3')[] = ['p1', 'p2', 'p3'];
+    const idx = order.indexOf(cur);
+    const nextIdx = reverse ? (idx + 2) % 3 : (idx + 1) % 3;
+    soundManager.playTick();
+    set({ selectedVertex: order[nextIdx] });
+  },
+
+  nudgeSelectedVertex: (dx, dy) => {
+    const state = get();
+    const vKey = state.selectedVertex || 'p1';
+    const w = state.world;
+
+    if (w === 'flat') {
+      const curPt = state.flatTriangle[vKey];
+      const nextX = Math.max(-2.5, Math.min(2.5, curPt.x + dx));
+      const nextY = Math.max(-2.5, Math.min(2.5, curPt.y + dy));
+      state.updateFlatVertex(vKey, { x: nextX, y: nextY });
+    } else if (w === 'sphere') {
+      const curPt = state.sphereTriangle[vKey];
+      const R = DEFAULT_SPHERE_RADIUS;
+      const target = { x: curPt.x + dx, y: curPt.y + dy, z: curPt.z };
+      const len = Math.hypot(target.x, target.y, target.z);
+      if (len > 1e-4) {
+        state.updateSphereVertex(vKey, {
+          x: (target.x / len) * R,
+          y: (target.y / len) * R,
+          z: (target.z / len) * R,
+        });
+      }
+    } else {
+      const curPt = state.saddleTriangle[vKey];
+      const nextU = Math.max(-1.8, Math.min(1.8, curPt.x + dx));
+      const nextV = Math.max(-1.8, Math.min(1.8, curPt.y + dy));
+      state.updateSaddleVertex(vKey, { x: nextU, y: nextV });
+    }
   },
 
   setParallelState: (updates) => {

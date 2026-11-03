@@ -1,10 +1,11 @@
 import React from 'react';
 import { useGeometryStore } from '../../store/geometryStore';
 import { TopBar, QuestionCard, DetailsDrawer, LandingScreen } from '../shell';
+import { TriangleLabStage } from '../triangle-lab';
 import { GeometryCanvas } from '../geometry/GeometryCanvas';
 
 export const AppShell: React.FC = () => {
-  const { isLanding } = useGeometryStore();
+  const { isLanding, lab } = useGeometryStore();
 
   if (isLanding) {
     return <LandingScreen />;
@@ -17,7 +18,7 @@ export const AppShell: React.FC = () => {
 
       {/* Full-bleed Interactive Stage */}
       <main className="flex-1 relative h-full overflow-hidden">
-        <GeometryCanvas />
+        {lab === 'triangle' ? <TriangleLabStage /> : <GeometryCanvas />}
         <QuestionCard />
         <DetailsDrawer />
       </main>
