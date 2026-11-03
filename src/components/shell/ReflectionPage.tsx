@@ -10,22 +10,22 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
   </section>
 );
 
-/** Chapter IV: what was found, why it mattered, and what we know about our own space. */
+/** Chapter V: what was found, why it mattered, and what we know about our own space. */
 export const ReflectionPage: React.FC = () => {
   const { reflectionText, setReflectionText } = useGeometryStore();
 
   return (
     <div className="absolute inset-0 overflow-y-auto bg-paper">
       <article className="max-w-[44rem] mx-auto px-5 sm:px-8 py-12 select-text">
-        <p className="text-[13px] text-ink-muted">Chapter IV</p>
+        <p className="text-[13px] text-ink-muted">Chapter V</p>
         <h1 className="mt-2 font-serif text-[44px] sm:text-[52px] leading-[1.05] tracking-tight text-ink">
           So what shape is space?
         </h1>
 
         <Section title="What you found">
           <p>
-            Chapters I and II asked the same two questions on three surfaces and got three different answers. Each
-            cell below fills in once you have seen it for yourself.
+            Chapters I to III asked the same three questions on three surfaces, and every time the flat plane sat
+            exactly between the sphere and the saddle. Each cell below fills in once you have seen it for yourself.
           </p>
           <div className="pt-2">
             <FindingsTable />
@@ -39,7 +39,7 @@ export const ReflectionPage: React.FC = () => {
           </p>
           <p>
             In the 1820s Lobachevsky and Bolyai stopped trying. They assumed the opposite, that there are many
-            parallels, and found a geometry with no contradictions in it: the one you walked across in Chapter III.
+            parallels, and found a geometry with no contradictions in it: the one you walked across in Chapter IV.
             Riemann later described geometries with no parallels at all, like the sphere's. Euclid's geometry became
             one possibility among several.
           </p>

@@ -44,13 +44,20 @@ export const CHAPTERS: Chapter[] = [
   {
     number: 3,
     numeral: 'III',
-    slug: 'disk',
-    title: 'The hyperbolic plane',
-    summary: 'The Poincaré disk maps the whole infinite plane. Walk it, measure it, tile it.',
+    slug: 'circles',
+    title: 'Circles',
+    summary: 'Is the distance around a circle always 2πr? Grow one on each surface and see.',
   },
   {
     number: 4,
     numeral: 'IV',
+    slug: 'disk',
+    title: 'The hyperbolic plane',
+    summary: 'The Poincaré disk maps the whole infinite plane. Walk it, tile it, slide it around.',
+  },
+  {
+    number: 5,
+    numeral: 'V',
     slug: 'meaning',
     title: 'What it means',
     summary: 'What you found, why it changed mathematics, and how we measure our own universe.',
@@ -64,11 +71,14 @@ export const STEPS: Step[] = [
   { chapter: 2, slug: 'flat', lab: 'parallel', world: 'flat', label: 'Flat', questionId: 'par_flat' },
   { chapter: 2, slug: 'sphere', lab: 'parallel', world: 'sphere', label: 'Sphere', questionId: 'par_sphere' },
   { chapter: 2, slug: 'saddle', lab: 'parallel', world: 'hyperbolic', label: 'Saddle', questionId: 'par_hyperbolic' },
-  { chapter: 3, slug: 'walk', lab: 'disk', exploration: 'walk', label: 'Walk', questionId: 'disk_walk' },
-  { chapter: 3, slug: 'circles', lab: 'disk', exploration: 'circles', label: 'Circles', questionId: 'disk_circles' },
-  { chapter: 3, slug: 'tiles', lab: 'disk', exploration: 'tiles', label: 'Tiles', questionId: 'disk_tiles' },
-  { chapter: 3, slug: 'polygons', lab: 'disk', exploration: 'polygon', label: 'Polygons', questionId: 'disk_polygon' },
-  { chapter: 4, slug: '', lab: 'reflection', label: 'Reading' },
+  { chapter: 3, slug: 'flat', lab: 'circle', world: 'flat', label: 'Flat', questionId: 'circ_flat' },
+  { chapter: 3, slug: 'sphere', lab: 'circle', world: 'sphere', label: 'Sphere', questionId: 'circ_sphere' },
+  { chapter: 3, slug: 'saddle', lab: 'circle', world: 'hyperbolic', label: 'Saddle', questionId: 'circ_hyperbolic' },
+  { chapter: 4, slug: 'walk', lab: 'disk', exploration: 'walk', label: 'Walk', questionId: 'disk_walk' },
+  { chapter: 4, slug: 'tiles', lab: 'disk', exploration: 'tiles', label: 'Tiles', questionId: 'disk_tiles' },
+  { chapter: 4, slug: 'tiling', lab: 'disk', exploration: 'tiling', label: 'Tiling', questionId: 'disk_tiling' },
+  { chapter: 4, slug: 'polygons', lab: 'disk', exploration: 'polygon', label: 'Polygons', questionId: 'disk_polygon' },
+  { chapter: 5, slug: '', lab: 'reflection', label: 'Reading' },
 ];
 
 export const chapterOf = (step: Step): Chapter => CHAPTERS.find((c) => c.number === step.chapter)!;
@@ -99,8 +109,12 @@ export function stepToHash(step: Step): string {
  * The page a hash points at. "#/" or "" is the cover (null). A chapter without a
  * page ("#/parallels") opens its first page. Unknown addresses give undefined.
  */
+/** Addresses from earlier versions of the book, and where they live now. */
+const MOVED: Record<string, string> = { 'disk/circles': 'circles/saddle' };
+
 export function hashToStep(hash: string): Step | null | undefined {
-  const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  const path = hash.replace(/^#\/?/, '');
+  const parts = (MOVED[path] ?? path).split('/').filter(Boolean);
   if (parts.length === 0) return null;
   const chapter = CHAPTERS.find((c) => c.slug === parts[0]);
   if (!chapter) return undefined;

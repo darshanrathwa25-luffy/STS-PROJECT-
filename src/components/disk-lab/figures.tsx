@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGeometryStore } from '../../store/geometryStore';
 import { Poincare } from '../../geometry-engine';
 import { palette } from '../../theme/palette';
@@ -11,6 +11,7 @@ import {
   polygonPath,
   segmentPath,
   toSvg,
+  fastPolygonPath,
 } from '../poincare';
 
 const { Point, Circle, TAU } = Poincare;
@@ -250,6 +251,101 @@ export const PolygonFigure: React.FC = () => {
           </g>
         );
       })}
+    </PoincareDisk>
+  );
+};
+
+// ---------------------------------------------------------------- Tiling
+
+const TILING_OPTIONS = { maxTiles: 1800, minSize: 0.006 };
+
+export const TilingFigure: React.FC = () => {
+  const { p, q, home, seq } = useGeometryStore((s) => s.disk.tiling);
+  const setTilingHome = useGeometryStore((s) => s.setTilingHome);
+  const { svgRef, toDisk } = useDiskPointer();
+  const [tiles, setTiles] = useState(() => Poincare.generateTiling(Poincare.centralTile(p, q), TILING_OPTIONS));
+  const last = useRef<{ x: number; y: number } | null>(null);
+  const homeRef = useRef(home);
+
+  // Start again from the central tile when the tiling changes or the view is reset
+  useEffect(() => {
+    setTiles(Poincare.generateTiling(Poincare.centralTile(p, q), TILING_OPTIONS));
+    homeRef.current = { x: 0, y: 0 };
+  }, [p, q, seq]);
+
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!last.current) return;
+    const raw = toDisk(e.clientX, e.clientY);
+    if (!raw) return;
+    const to = clampToDisk(raw, 0.94);
+    const move = Poincare.dragMove(last.current, to);
+    last.current = to;
+
+    // Slide everything, then rebuild outward from the tile now nearest the centre,
+    // so the disk stays full however far the plane is dragged
+    let nearest = 0;
+    let best = Infinity;
+    tiles.forEach((t, i) => {
+      const c = Poincare.mobiusApply(move, t.center);
+      const d = c.x * c.x + c.y * c.y;
+      if (d < best) {
+        best = d;
+        nearest = i;
+      }
+    });
+    const seed = tiles[nearest];
+    const moved: Poincare.Tile = {
+      vertices: seed.vertices.map((v) => Poincare.mobiusApply(move, v)),
+      center: Poincare.mobiusApply(move, seed.center),
+      depth: 0,
+    };
+    setTiles(Poincare.generateTiling(moved, TILING_OPTIONS));
+    homeRef.current = Poincare.mobiusApply(move, homeRef.current);
+    setTilingHome(homeRef.current);
+  };
+
+  // The home tile is whichever tile's centre is where the original centre tile went
+  const homeIndex = useMemo(() => {
+    let found = -1;
+    let best = Infinity;
+    tiles.forEach((t, i) => {
+      const d = Math.hypot(t.center.x - home.x, t.center.y - home.y);
+      if (d < best) {
+        best = d;
+        found = i;
+      }
+    });
+    return best < 1e-3 ? found : -1;
+  }, [tiles, home]);
+
+  const paths = useMemo(() => tiles.map((t) => fastPolygonPath(t.vertices)), [tiles]);
+
+  return (
+    <PoincareDisk
+      svgRef={svgRef}
+      className={last.current ? 'cursor-grabbing' : 'cursor-grab'}
+      onPointerDown={(e) => {
+        const p0 = toDisk(e.clientX, e.clientY);
+        if (!p0 || Math.hypot(p0.x, p0.y) > 0.98) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        last.current = clampToDisk(p0, 0.94);
+      }}
+      onPointerMove={onMove}
+      onPointerUp={() => (last.current = null)}
+      ariaLabel={`A {${p}, ${q}} tiling of the hyperbolic plane`}
+    >
+      {paths.map((d, i) => (
+        <path
+          key={i}
+          d={d}
+          fill={i === homeIndex ? palette.red : palette.yellow}
+          fillOpacity={i === homeIndex ? 0.95 : 0.8}
+          stroke={palette.ink}
+          strokeWidth={1}
+          strokeLinejoin="round"
+          {...stroke}
+        />
+      ))}
     </PoincareDisk>
   );
 };

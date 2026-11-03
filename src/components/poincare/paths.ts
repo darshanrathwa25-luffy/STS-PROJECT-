@@ -70,3 +70,29 @@ export function circleGeometry(circle: Poincare.Circle): { cx: number; cy: numbe
   const c = circle.getEuclideanCenter();
   return { cx: c.getX(), cy: -c.getY(), r: circle.getEuclideanRadius() };
 }
+
+/**
+ * Fast version of polygonPath for plain {x, y} points (disk coordinates, y up),
+ * for drawing thousands of tiles while the plane is dragged.
+ */
+export function fastPolygonPath(vertices: { x: number; y: number }[]): string {
+  const n = vertices.length;
+  let d = `M${vertices[0].x.toFixed(4)} ${(-vertices[0].y).toFixed(4)}`;
+  for (let i = 0; i < n; i++) {
+    const a = vertices[i];
+    const b = vertices[(i + 1) % n];
+    const g = Poincare.geodesicThrough(a, b);
+    if (g.kind === 'diameter') {
+      d += `L${b.x.toFixed(4)} ${(-b.y).toFixed(4)}`;
+    } else {
+      const { center, radius } = g;
+      const ax = a.x - center.x;
+      const ay = -(a.y - center.y);
+      const bx = b.x - center.x;
+      const by = -(b.y - center.y);
+      const sweep = ax * by - ay * bx > 0 ? 1 : 0;
+      d += `A${radius.toFixed(4)} ${radius.toFixed(4)} 0 0 ${sweep} ${b.x.toFixed(4)} ${(-b.y).toFixed(4)}`;
+    }
+  }
+  return d + 'Z';
+}

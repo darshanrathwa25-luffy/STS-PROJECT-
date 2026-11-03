@@ -15,6 +15,8 @@ describe('Book structure', () => {
     expect(hashToStep('#/parallels')).toBe(pagesOf(2)[0]);
     expect(hashToStep('#/nowhere')).toBeUndefined();
     expect(hashToStep('#/triangles/moon')).toBeUndefined();
+    // moved in a later version of the book
+    expect(hashToStep('#/disk/circles')).toBe(pagesOf(3)[2]);
   });
 
   it('each view on screen belongs to exactly one page', () => {
@@ -24,7 +26,7 @@ describe('Book structure', () => {
   });
 
   it('chapters are in order and every page question exists', () => {
-    expect(CHAPTERS.map((c) => c.number)).toEqual([1, 2, 3, 4]);
+    expect(CHAPTERS.map((c) => c.number)).toEqual([1, 2, 3, 4, 5]);
     for (let i = 1; i < STEPS.length; i++) expect(STEPS[i].chapter).toBeGreaterThanOrEqual(STEPS[i - 1].chapter);
     STEPS.filter((s) => s.questionId).forEach((s) => expect(questionById(s.questionId!)).toBeDefined());
   });

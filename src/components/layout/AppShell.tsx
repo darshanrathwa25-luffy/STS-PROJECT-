@@ -5,6 +5,8 @@ import { TriangleLabStage, TriangleHUD } from '../triangle-lab';
 import { GeometryCanvas } from '../geometry/GeometryCanvas';
 import { ParallelControls } from '../geometry/ParallelControls';
 import { DiskLabStage, DiskLabPanel } from '../disk-lab';
+import { CircleLabStage } from '../circles-lab/CircleLabStage';
+import { CircleLabPanel } from '../circles-lab/CircleLabPanel';
 import { GoalRunner } from '../../tutorial/GoalRunner';
 import { PredictionVeil, VeiledReadout } from '../../tutorial/PredictionVeil';
 
@@ -31,7 +33,15 @@ export const AppShell: React.FC = () => {
               <>
                 {/* Figure */}
                 <section className="relative flex-1 min-h-[56vh] lg:min-h-0">
-                  {lab === 'triangle' ? <TriangleLabStage /> : lab === 'disk' ? <DiskLabStage /> : <GeometryCanvas />}
+                  {lab === 'triangle' ? (
+                    <TriangleLabStage />
+                  ) : lab === 'circle' ? (
+                    <CircleLabStage />
+                  ) : lab === 'disk' ? (
+                    <DiskLabStage />
+                  ) : (
+                    <GeometryCanvas />
+                  )}
                   {pending && <PredictionVeil question={pending} />}
                 </section>
 
@@ -41,6 +51,8 @@ export const AppShell: React.FC = () => {
                     <VeiledReadout />
                   ) : lab === 'triangle' ? (
                     <TriangleHUD />
+                  ) : lab === 'circle' ? (
+                    <CircleLabPanel />
                   ) : lab === 'disk' ? (
                     <DiskLabPanel />
                   ) : (

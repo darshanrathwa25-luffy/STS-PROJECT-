@@ -96,79 +96,6 @@ const WalkPanel: React.FC = () => {
   );
 };
 
-// ---------------------------------------------------------------- Circles
-
-const CirclesPanel: React.FC = () => {
-  const { cx, cy, r } = useGeometryStore((s) => s.disk.circle);
-  const setDiskCircle = useGeometryStore((s) => s.setDiskCircle);
-  const circle = Poincare.Circle.givenHyperbolicCenterRadius(Poincare.Point.givenCoordinates(cx, cy), r) as Poincare.Circle;
-  const around = circle.getHyperbolicCircumference();
-  const area = circle.getHyperbolicArea();
-  const flatAround = Poincare.flatCircleCircumference(r);
-  const flatArea = Poincare.flatCircleArea(r);
-
-  return (
-    <>
-      <Big label="Distance around">{around.toFixed(2)}</Big>
-      <p className="mt-2 text-[14px] text-ink-soft">
-        A flat circle of the same radius: <span className="font-mono tabular">{flatAround.toFixed(2)}</span>.{' '}
-        That's <span className="font-medium tabular" style={{ color: palette.ochre }}>×{(around / flatAround).toFixed(2)}</span>.
-      </p>
-
-      <div className="mt-5">
-        <div className="flex items-baseline justify-between">
-          <label htmlFor="circle-radius" className="text-[14px] text-ink-soft">
-            Radius <span className="font-serif italic text-[16px]">r</span>
-          </label>
-          <span className="font-mono text-[14px] text-ink tabular">{r.toFixed(1)}</span>
-        </div>
-        <input
-          id="circle-radius"
-          type="range"
-          min={0.1}
-          max={5}
-          step={0.1}
-          value={r}
-          onChange={(e) => setDiskCircle({ r: parseFloat(e.target.value) })}
-          className="mt-2 w-full cursor-pointer"
-        />
-        <div className="mt-2 flex gap-1.5">
-          {[1, 2, 3, 4].map((v) => (
-            <button key={v} className={chip(Math.abs(r - v) < 1e-9)} onClick={() => setDiskCircle({ r: v })}>
-              r = {v}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <table className="mt-5 w-full text-[13px]">
-        <thead>
-          <tr className="text-ink-muted text-left">
-            <th className="font-normal py-1.5" />
-            <th className="font-normal py-1.5 text-right">Here</th>
-            <th className="font-normal py-1.5 text-right">Flat</th>
-          </tr>
-        </thead>
-        <tbody className="font-mono tabular">
-          <tr className="border-t border-rule">
-            <td className="py-2 font-sans text-[14px] text-ink-soft">Around</td>
-            <td className="py-2 text-right text-ink">{around.toFixed(2)}</td>
-            <td className="py-2 text-right text-ink-muted">{flatAround.toFixed(2)}</td>
-          </tr>
-          <tr className="border-y border-rule">
-            <td className="py-2 font-sans text-[14px] text-ink-soft">Area</td>
-            <td className="py-2 text-right text-ink">{area.toFixed(2)}</td>
-            <td className="py-2 text-right text-ink-muted">{flatArea.toFixed(2)}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p className="mt-3 text-[13px] text-ink-muted">
-        Here: 2π sinh <i>r</i> around and 2π(cosh <i>r</i> − 1) inside. Flat: 2π<i>r</i> and π<i>r</i>².
-      </p>
-    </>
-  );
-};
-
 // ---------------------------------------------------------------- Tiles
 
 const TilesPanel: React.FC = () => {
@@ -246,6 +173,65 @@ const TilesPanel: React.FC = () => {
   );
 };
 
+// ---------------------------------------------------------------- Tiling
+
+const TILINGS: { p: number; q: number; name: string }[] = [
+  { p: 7, q: 3, name: 'Heptagons, 3 at a corner' },
+  { p: 6, q: 4, name: 'Hexagons, 4 at a corner' },
+  { p: 5, q: 4, name: 'Pentagons, 4 at a corner' },
+  { p: 4, q: 5, name: 'Squares, 5 at a corner' },
+  { p: 8, q: 3, name: 'Octagons, 3 at a corner' },
+  { p: 3, q: 7, name: 'Triangles, 7 at a corner' },
+];
+
+const TilingPanel: React.FC = () => {
+  const { p, q, home } = useGeometryStore((s) => s.disk.tiling);
+  const { setTiling, resetTilingView } = useGeometryStore();
+  const away = Poincare.diskDistance(home, { x: 0, y: 0 });
+
+  return (
+    <>
+      <Big label="Home tile's distance from the centre">{away.toFixed(2)}</Big>
+      <p className="mt-2 text-[14px] text-ink-soft">
+        Drag the plane and watch the red tile shrink towards the rim, while new tiles of exactly the same size slide in.
+      </p>
+
+      <div className="mt-5">
+        <div className="text-[14px] text-ink-soft">Tiling</div>
+        <div className="mt-2 grid gap-1.5">
+          {TILINGS.map((t) => (
+            <button
+              key={`${t.p},${t.q}`}
+              onClick={() => setTiling(t.p, t.q)}
+              aria-pressed={t.p === p && t.q === q}
+              className={`flex items-baseline justify-between h-8 px-3 text-[13px] border transition-colors ${
+                t.p === p && t.q === q ? 'border-ink text-ink bg-paper-sunk' : 'border-rule text-ink-soft hover:border-rule-strong hover:text-ink'
+              }`}
+            >
+              <span>{t.name}</span>
+              <span className="font-mono text-[12px] text-ink-muted">
+                {'{'}
+                {t.p}, {t.q}
+                {'}'}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <button className={button} onClick={resetTilingView} disabled={away < 1e-6}>
+          Bring the home tile back
+        </button>
+      </div>
+      <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">
+        A regular tiling {'{'}p, q{'}'} has p-sided tiles with q meeting at every corner. On a flat floor only {'{'}3, 6{'}'},{' '}
+        {'{'}4, 4{'}'} and {'{'}6, 3{'}'} work. Here, any p and q with (p − 2)(q − 2) &gt; 4 do.
+      </p>
+    </>
+  );
+};
+
 // ---------------------------------------------------------------- Polygon
 
 const PolygonPanel: React.FC = () => {
@@ -317,8 +303,8 @@ export const DiskLabPanel: React.FC = () => {
     <section aria-label="Disk lab controls" className="px-5 pt-5 pb-6 border-b border-rule">
       <div>
         {exploration === 'walk' && <WalkPanel />}
-        {exploration === 'circles' && <CirclesPanel />}
         {exploration === 'tiles' && <TilesPanel />}
+        {exploration === 'tiling' && <TilingPanel />}
         {exploration === 'polygon' && <PolygonPanel />}
       </div>
     </section>

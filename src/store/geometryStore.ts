@@ -15,8 +15,8 @@ import {
 import { soundManager } from '../utils/audio';
 
 export type WorldKind = 'flat' | 'sphere' | 'hyperbolic';
-export type LabKind = 'triangle' | 'parallel' | 'disk' | 'reflection';
-export type DiskExploration = 'walk' | 'circles' | 'tiles' | 'polygon';
+export type LabKind = 'triangle' | 'parallel' | 'circle' | 'disk' | 'reflection';
+export type DiskExploration = 'walk' | 'tiles' | 'tiling' | 'polygon';
 /** Tutorial: predict, then a goal, then the explanation. Explorer: everything open. */
 export type LearningMode = 'tutorial' | 'explorer';
 
@@ -35,6 +35,14 @@ export interface DiskState {
   tiles: { sides: number; radius: number };
   /** Vertices of the free polygon, in the disk. */
   polygon: { x: number; y: number }[];
+  /** The {p, q} tiling, where its first ("home") tile's centre now is, and a rebuild counter. */
+  tiling: { p: number; q: number; home: { x: number; y: number }; seq: number };
+}
+
+/** Circle radius (measured along the surface) on the flat and sphere circle pages. */
+export interface CircleLabState {
+  flat: number;
+  sphere: number;
 }
 export type AppMode = 'explore' | 'compare';
 
@@ -90,6 +98,9 @@ export interface GeometryStoreState {
 
   // Parallel Lines Lab State
   parallel: ParallelState;
+
+  // Circles lab (the hyperbolic page uses disk.circle)
+  circles: CircleLabState;
 
   // Poincaré disk lab
   disk: DiskState;
@@ -172,6 +183,11 @@ export interface GeometryStoreState {
   setDiskCircle: (updates: Partial<DiskState['circle']>) => void;
   setDiskTiles: (updates: Partial<DiskState['tiles']>) => void;
   setDiskPolygon: (points: DiskState['polygon']) => void;
+  setTiling: (p: number, q: number) => void;
+  /** Record where the home tile has been dragged to. */
+  setTilingHome: (home: { x: number; y: number }) => void;
+  resetTilingView: () => void;
+  setCircleRadius: (world: WorldKind, r: number) => void;
   /** Open a stop on the guided path: switches lab, world and exploration together. */
   goToStep: (step: { lab: LabKind; world?: WorldKind; exploration?: DiskExploration }) => void;
 
@@ -229,7 +245,10 @@ const INITIAL_DISK: DiskState = {
     { x: 0.4, y: -0.3 },
     { x: 0.05, y: 0.45 },
   ],
+  tiling: { p: 7, q: 3, home: { x: 0, y: 0 }, seq: 0 },
 };
+
+const INITIAL_CIRCLES: CircleLabState = { flat: 1, sphere: 1 };
 
 /** How far out the walker may go; beyond this the map position is indistinguishable from the rim. */
 export const DISK_WALK_LIMIT = 8;
@@ -273,6 +292,7 @@ export const useGeometryStore = create<GeometryStoreState>((set, get) => ({
   },
 
   disk: INITIAL_DISK,
+  circles: INITIAL_CIRCLES,
 
   selectedVertex: 'p1',
   isDragging: false,
@@ -572,7 +592,8 @@ export const useGeometryStore = create<GeometryStoreState>((set, get) => ({
         details: 'Through point P, exactly one line never intersects L.',
       },
       parallelExperiment: { ...get().parallelExperiment, theta: 0, showFan: false, candidateAngleDeg: 0 },
-      disk: { ...INITIAL_DISK, exploration: get().disk.exploration },
+      disk: { ...INITIAL_DISK, exploration: get().disk.exploration, tiling: { ...INITIAL_DISK.tiling, p: get().disk.tiling.p, q: get().disk.tiling.q, seq: get().disk.tiling.seq + 1 } },
+      circles: INITIAL_CIRCLES,
       cameraResetSeq: get().cameraResetSeq + 1,
     });
     get().loadExperiment(get().experiment);
@@ -627,6 +648,30 @@ export const useGeometryStore = create<GeometryStoreState>((set, get) => ({
 
   setDiskPolygon: (polygon) => {
     set({ disk: { ...get().disk, polygon } });
+  },
+
+  setTiling: (p, q) => {
+    soundManager.playTick();
+    const { disk } = get();
+    set({ disk: { ...disk, tiling: { p, q, home: { x: 0, y: 0 }, seq: disk.tiling.seq + 1 } } });
+  },
+
+  setTilingHome: (home) => {
+    const { disk } = get();
+    set({ disk: { ...disk, tiling: { ...disk.tiling, home } } });
+  },
+
+  resetTilingView: () => {
+    const { disk } = get();
+    set({ disk: { ...disk, tiling: { ...disk.tiling, home: { x: 0, y: 0 }, seq: disk.tiling.seq + 1 } } });
+  },
+
+  setCircleRadius: (world, r) => {
+    if (world === 'hyperbolic') {
+      get().setDiskCircle({ r });
+    } else {
+      set({ circles: { ...get().circles, [world]: r } });
+    }
   },
 
   goToStep: ({ lab, world, exploration }) => {

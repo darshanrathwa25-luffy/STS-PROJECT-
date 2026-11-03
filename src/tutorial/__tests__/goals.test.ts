@@ -33,7 +33,17 @@ describe('Tutorial goals', () => {
     expect(GOALS.par_flat(useGeometryStore.getState(), r.flags ?? {}).met).toBe(true);
     // Circles and walking
     st.setDiskCircle({ r: 3 });
-    expect(GOALS.disk_circles(useGeometryStore.getState(), {}).met).toBe(true);
+    expect(GOALS.circ_hyperbolic(useGeometryStore.getState(), {}).met).toBe(true);
+    // Circles on the flat plane and past the equator of the sphere
+    st.setCircleRadius('flat', 2);
+    expect(GOALS.circ_flat(useGeometryStore.getState(), {}).met).toBe(true);
+    st.setCircleRadius('sphere', 3);
+    expect(GOALS.circ_sphere(useGeometryStore.getState(), {}).met).toBe(false);
+    st.setCircleRadius('sphere', 5);
+    expect(GOALS.circ_sphere(useGeometryStore.getState(), {}).met).toBe(true);
+    // Tiling: home tile dragged 2 units away (tanh(1) on the map)
+    st.setTilingHome({ x: Math.tanh(1.01), y: 0 });
+    expect(GOALS.disk_tiling(useGeometryStore.getState(), {}).met).toBe(true);
     for (let i = 0; i < 20; i++) st.diskWalk(0.25);
     expect(GOALS.disk_walk(useGeometryStore.getState(), {}).met).toBe(true);
   });

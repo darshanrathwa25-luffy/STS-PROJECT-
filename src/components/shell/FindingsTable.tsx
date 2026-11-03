@@ -4,12 +4,12 @@ import { questionById } from '../../content/questions';
 import { worldColor } from '../../theme/palette';
 
 const WORLD_ROWS = [
-  { world: 'flat' as const, label: 'Flat plane', angles: 'tri_flat', parallels: 'par_flat' },
-  { world: 'sphere' as const, label: 'Sphere', angles: 'tri_sphere', parallels: 'par_sphere' },
-  { world: 'hyperbolic' as const, label: 'Saddle', angles: 'tri_hyperbolic', parallels: 'par_hyperbolic' },
+  { world: 'flat' as const, label: 'Flat plane', angles: 'tri_flat', parallels: 'par_flat', circles: 'circ_flat' },
+  { world: 'sphere' as const, label: 'Sphere', angles: 'tri_sphere', parallels: 'par_sphere', circles: 'circ_sphere' },
+  { world: 'hyperbolic' as const, label: 'Saddle', angles: 'tri_hyperbolic', parallels: 'par_hyperbolic', circles: 'circ_hyperbolic' },
 ];
 
-const DISK_ROWS = ['disk_walk', 'disk_circles', 'disk_tiles', 'disk_polygon'];
+const DISK_ROWS = ['disk_walk', 'disk_tiles', 'disk_tiling', 'disk_polygon'];
 
 /** What the student has found so far. Cells fill in as questions are marked observed. */
 export const FindingsTable: React.FC = () => {
@@ -27,9 +27,10 @@ export const FindingsTable: React.FC = () => {
       <table className="w-full text-[14px] table-fixed">
         <thead>
           <tr className="text-left text-[12px] text-ink-muted">
-            <th className="font-normal pb-2 w-[34%]" />
-            <th className="font-normal pb-2">Triangle angles add up to</th>
-            <th className="font-normal pb-2">Lines through P that miss L</th>
+            <th className="font-normal pb-2 w-[25%]" />
+            <th className="font-normal pb-2 pr-2">Triangle angles add up to</th>
+            <th className="font-normal pb-2 pr-2">Lines through P that miss L</th>
+            <th className="font-normal pb-2">Distance around a circle</th>
           </tr>
         </thead>
         <tbody>
@@ -42,7 +43,8 @@ export const FindingsTable: React.FC = () => {
                 </span>
               </th>
               <td className="py-2 pr-2">{cell(r.angles)}</td>
-              <td className="py-2">{cell(r.parallels)}</td>
+              <td className="py-2 pr-2">{cell(r.parallels)}</td>
+              <td className="py-2">{cell(r.circles)}</td>
             </tr>
           ))}
         </tbody>

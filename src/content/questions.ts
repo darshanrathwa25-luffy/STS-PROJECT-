@@ -33,6 +33,12 @@ const SUM_OPTIONS = [
   { id: 'more', label: 'More than 180°' },
 ];
 
+const CIRCLE_OPTIONS = [
+  { id: 'less', label: 'Less than 2πr' },
+  { id: 'equal', label: 'Exactly 2πr' },
+  { id: 'more', label: 'More than 2πr' },
+];
+
 const PARALLEL_OPTIONS = [
   { id: 'none', label: 'None' },
   { id: 'one', label: 'Exactly one' },
@@ -141,6 +147,54 @@ export const QUESTIONS: QuestionSpec[] = [
     finding: 'infinitely many',
   },
   {
+    id: 'circ_flat',
+    world: 'flat',
+    lab: 'circle',
+    title: 'How big is a circle?',
+    prompt: 'Drag the edge of the circle. Compare the distance around it with 2πr.',
+    goal: 'Make the radius 2 or more and check the distance around against 2πr.',
+    predict: {
+      prompt: 'On a flat sheet, the distance around a circle of radius r is…',
+      options: CIRCLE_OPTIONS,
+      answer: 'equal',
+    },
+    hint: 'Try r = 0.5, then 1, then 2. Divide the distance around by the radius each time.',
+    reveal: 'Exactly 2πr, at every size: the distance around is always π times the width. That fixed ratio is itself a fact about flat space. On a curved surface it changes with the size of the circle.',
+    finding: 'exactly 2πr',
+  },
+  {
+    id: 'circ_sphere',
+    world: 'sphere',
+    lab: 'circle',
+    title: 'Circles on a ball',
+    prompt: 'This circle is centred on the North Pole. Grow it and compare the distance around it with 2πr.',
+    goal: 'Grow the circle past the equator. What happens to the distance around?',
+    predict: {
+      prompt: 'On a sphere, the distance around a circle of radius r is…',
+      options: CIRCLE_OPTIONS,
+      answer: 'less',
+    },
+    hint: 'The radius is measured along the surface, from the pole. Watch what the edge does as it reaches the equator.',
+    reveal: "Less than 2πr, and the gap grows with size: 2πR·sin(r/R). The biggest circle is the equator; grow the radius further and the circle shrinks again, to a point at the South Pole. An ant on the surface could measure the curvature this way without ever leaving it. Gauss proved in 1827 that curvature can be measured from inside a surface (his Theorema Egregium).",
+    finding: 'less than 2πr',
+  },
+  {
+    id: 'circ_hyperbolic',
+    lab: 'circle',
+    world: 'hyperbolic',
+    title: 'How big is a circle?',
+    prompt: 'Grow the circle on the hyperbolic plane and compare the distance around it with a flat circle of the same radius.',
+    goal: 'Make the radius at least 3 and compare with the flat circle.',
+    predict: {
+      prompt: 'On the hyperbolic plane, the distance around a circle of radius r is…',
+      options: CIRCLE_OPTIONS,
+      answer: 'more',
+    },
+    hint: 'On a flat plane, doubling the radius doubles the circumference. Try r = 1, then 2, then 3.',
+    reveal: 'Circumference is 2π·sinh r, which grows exponentially: at radius 5 it is about 15 times a flat circle. There is far more room in hyperbolic space than in flat space, which is why it suits drawing trees and networks that branch without crowding.',
+    finding: 'more than 2πr',
+  },
+  {
     id: 'disk_walk',
     lab: 'disk',
     exploration: 'walk',
@@ -161,26 +215,6 @@ export const QUESTIONS: QuestionSpec[] = [
     finding: 'the edge is infinitely far',
   },
   {
-    id: 'disk_circles',
-    lab: 'disk',
-    exploration: 'circles',
-    title: 'How big is a circle?',
-    prompt: 'Change the radius and compare the distance around the circle with a flat circle of the same radius.',
-    goal: 'Make the radius at least 3 and compare with the flat circle.',
-    predict: {
-      prompt: "Double a circle's radius on the hyperbolic plane. The distance around it…",
-      options: [
-        { id: 'less', label: 'Less than doubles' },
-        { id: 'double', label: 'Doubles, as on paper' },
-        { id: 'more', label: 'More than doubles' },
-      ],
-      answer: 'more',
-    },
-    hint: 'On a flat plane, doubling the radius doubles the circumference. Try r = 1, then 2, then 3.',
-    reveal: 'Circumference is 2π·sinh r, which grows exponentially: at radius 5 it is about 15 times a flat circle. There is far more room in hyperbolic space than in flat space, which is why it suits drawing trees and networks that branch without crowding.',
-    finding: 'circles grow exponentially',
-  },
-  {
     id: 'disk_tiles',
     lab: 'disk',
     exploration: 'tiles',
@@ -199,6 +233,26 @@ export const QUESTIONS: QuestionSpec[] = [
     hint: 'Bigger shapes have sharper corners here. Use the “fit” buttons, or drag the size slider until the red gap closes.',
     reveal: "Any number from four up will fit, if the tiles are big enough. Hyperbolic space can be tiled in infinitely many regular ways, where flat space has only three. M. C. Escher's Circle Limit prints are tilings like these drawn on this same disk.",
     finding: 'more tiles fit around a corner',
+  },
+  {
+    id: 'disk_tiling',
+    lab: 'disk',
+    exploration: 'tiling',
+    title: 'Is the centre special?',
+    prompt: 'Drag the plane. The red tile is home. Watch it move towards the rim, and look at the tiles that replace it.',
+    goal: 'Drag the home tile at least 2 units away from the centre.',
+    predict: {
+      prompt: 'The disk has a centre and a rim. On the hyperbolic plane itself, is the middle of the disk a special place?',
+      options: [
+        { id: 'centre', label: 'Yes, it is the centre of the plane' },
+        { id: 'none', label: 'No, every point is just like it' },
+        { id: 'edge', label: 'Only the rim is special' },
+      ],
+      answer: 'none',
+    },
+    hint: 'Drag from the middle towards the rim, a few times. Does any tile ever look different from the one in the middle?',
+    reveal: "No point is special. The hyperbolic plane looks the same from everywhere; the disk simply draws one point in the middle. Sliding the map like this is a hyperbolic translation, the disk's version of sliding a sheet of paper. Every tile is the same shape and size; only the map makes the far ones look small. This is the picture Escher drew in his Circle Limit prints.",
+    finding: 'every point is alike',
   },
   {
     id: 'disk_polygon',

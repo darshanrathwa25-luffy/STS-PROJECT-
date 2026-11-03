@@ -56,7 +56,11 @@ export const GOALS: Record<string, GoalCheck> = {
     met: Poincare.Point.givenCoordinates(s.disk.walker.x, s.disk.walker.y).getHyperbolicRadius() >= 4,
   }),
 
-  disk_circles: (s) => ({ met: s.disk.circle.r >= 3 }),
+  circ_flat: (s) => ({ met: s.circles.flat >= 2 }),
+
+  circ_sphere: (s) => ({ met: s.circles.sphere > (Math.PI * DEFAULT_SPHERE_RADIUS) / 2 + 0.2 }),
+
+  circ_hyperbolic: (s) => ({ met: s.disk.circle.r >= 3 }),
 
   disk_tiles: (s) => {
     const { sides, radius } = s.disk.tiles;
@@ -65,6 +69,8 @@ export const GOALS: Record<string, GoalCheck> = {
     const gap = 2 * Math.PI - fit * angle;
     return { met: sides === 6 && fit >= 4 && gap < (0.5 * Math.PI) / 180 };
   },
+
+  disk_tiling: (s) => ({ met: Poincare.diskDistance(s.disk.tiling.home, { x: 0, y: 0 }) >= 2 }),
 
   disk_polygon: (s) => {
     if (s.disk.polygon.length !== 3) return { met: false };

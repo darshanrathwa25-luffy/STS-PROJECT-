@@ -21,6 +21,9 @@ export * from './hyperbolic/geodesics';
 export * from './hyperbolic/intersections';
 export * from './hyperbolic/saddle';
 
+// Circle measurements on all three surfaces
+export * from './circles';
+
 // Parallel lab set-up and classification
 export * from './parallelLab';
 

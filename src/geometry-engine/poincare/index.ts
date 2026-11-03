@@ -12,6 +12,8 @@ export type { LineOptions, Geodesic } from './line';
 export type { CircleOptions } from './circle';
 export type { PolygonOptions } from './polygon';
 export * from './measure';
+export * from './mobius';
+export * from './tiling';
 
 /** The original library's namespace shape, kept so ported code and tests read the same. */
 export const HyperbolicCanvas = { INFINITY, ZERO, Angle, Point, Line, Circle, Polygon };

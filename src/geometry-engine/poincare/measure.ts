@@ -5,6 +5,7 @@ import { Angle } from './angle';
 import { Point } from './point';
 import { Polygon } from './polygon';
 import { Line } from './line';
+import { geodesicThrough } from './mobius';
 
 /** Signed Euclidean area of the vertex polygon; > 0 when the vertices run anticlockwise. */
 function orientation(vertices: Point[]): number {
@@ -15,6 +16,24 @@ function orientation(vertices: Point[]): number {
     area += a.getX() * b.getY() - b.getX() * a.getY();
   }
   return area / 2;
+}
+
+/**
+ * The direction (radians) in which the hyperbolic segment from `from` to `to` leaves
+ * `from`: the tangent of its geodesic circle there, or the straight direction for a
+ * diameter. Used instead of upstream Point.hyperbolicAngleTo, which fails when its
+ * two tangent lines come out exactly parallel.
+ */
+export function hyperbolicDirection(from: Point, to: Point): number {
+  const a = { x: from.getX(), y: from.getY() };
+  const b = { x: to.getX(), y: to.getY() };
+  const g = geodesicThrough(a, b);
+  const chord = { x: b.x - a.x, y: b.y - a.y };
+  if (g.kind === 'diameter') return Angle.normalize(Math.atan2(chord.y, chord.x));
+  let t = { x: -(a.y - g.center.y), y: a.x - g.center.x };
+  // The arc inside the disk is under a semicircle, so its tangent leans towards the chord
+  if (t.x * chord.x + t.y * chord.y < 0) t = { x: -t.x, y: -t.y };
+  return Angle.normalize(Math.atan2(t.y, t.x));
 }
 
 /**
@@ -29,8 +48,8 @@ export function interiorAngles(vertices: Point[]): number[] {
     const prev = vertices[(i + n - 1) % n];
     const next = vertices[(i + 1) % n];
     if (v.equals(prev) || v.equals(next)) return 0;
-    const toPrev = v.hyperbolicAngleTo(prev);
-    const toNext = v.hyperbolicAngleTo(next);
+    const toPrev = hyperbolicDirection(v, prev);
+    const toNext = hyperbolicDirection(v, next);
     return ccw ? Angle.normalize(toPrev - toNext) : Angle.normalize(toNext - toPrev);
   });
 }
