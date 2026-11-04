@@ -1,8 +1,8 @@
-import React, { Suspense, lazy } from 'react';
+import React, { lazy } from 'react';
 import { useGeometryStore } from '../../store/geometryStore';
 import { FlatCircleView } from './FlatCircleView';
 import { CirclesFigure } from '../disk-lab/figures';
-import { StageLoading } from '../shell/StageLoading';
+import { Stage3D } from '../shell/Stage3D';
 
 // Three.js is only fetched when the sphere page opens
 const SphereCircleCanvas = lazy(() => import('./SphereCircleCanvas'));
@@ -14,9 +14,9 @@ export const CircleLabStage: React.FC = () => {
 
   if (world === 'sphere') {
     return (
-      <Suspense fallback={<StageLoading />}>
+      <Stage3D>
         <SphereCircleCanvas />
-      </Suspense>
+      </Stage3D>
     );
   }
 

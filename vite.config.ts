@@ -4,6 +4,9 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Relative asset paths, so the built site works from any folder,
+  // e.g. GitHub Pages' https://<user>.github.io/<repo>/ (routes live after the #)
+  base: './',
   plugins: [react()],
   resolve: {
     alias: {

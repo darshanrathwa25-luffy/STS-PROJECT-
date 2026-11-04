@@ -1,7 +1,7 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { lazy, useEffect } from 'react';
 import { useGeometryStore } from '../../store/geometryStore';
 import { FlatTriangleView } from './FlatTriangleView';
-import { StageLoading } from '../shell/StageLoading';
+import { Stage3D } from '../shell/Stage3D';
 
 // Three.js is only fetched when a sphere or saddle page opens
 const TriangleCanvas3D = lazy(() => import('./TriangleCanvas3D'));
@@ -48,9 +48,9 @@ export const TriangleLabStage: React.FC = () => {
         <FlatTriangleView />
       ) : (
         // 2 & 3. Sphere and saddle, drawn in 3D
-        <Suspense fallback={<StageLoading />}>
+        <Stage3D>
           <TriangleCanvas3D />
-        </Suspense>
+        </Stage3D>
       )}
 
       {/* Interaction hint */}

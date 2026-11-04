@@ -1,7 +1,7 @@
-import React, { Suspense, lazy } from 'react';
+import React, { lazy } from 'react';
 import { useGeometryStore } from '../../store/geometryStore';
 import { ParallelDiskView } from './ParallelDiskView';
-import { StageLoading } from '../shell/StageLoading';
+import { Stage3D } from '../shell/Stage3D';
 
 // Three.js is only fetched when the flat or sphere parallels page opens
 const ParallelCanvas3D = lazy(() => import('./ParallelCanvas3D'));
@@ -16,8 +16,8 @@ export const GeometryCanvas: React.FC = () => {
   }
 
   return (
-    <Suspense fallback={<StageLoading />}>
+    <Stage3D>
       <ParallelCanvas3D />
-    </Suspense>
+    </Stage3D>
   );
 };
